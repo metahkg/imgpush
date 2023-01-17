@@ -2,4 +2,8 @@ images/
 cache/
 __pycache__/
 *.pyc
-venv
+venv/
+.lh/
+.vscode/
+__pycache__/
+.env
