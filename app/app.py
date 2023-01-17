@@ -220,7 +220,7 @@ def upload_image():
     if error:
         return jsonify(error=error), 400
 
-    return jsonify(filename=output_filename, path=f"{settings.IMAGES_ROOT}/{output_filename}", url=f"{request.origin}{settings.IMAGES_ROOT}/{output_filename}"), 200
+    return jsonify(filename=output_filename, path=f"{settings.IMAGES_ROOT}/{output_filename}", url=f"{request.host_url}{settings.IMAGES_ROOT}/{output_filename}"), 200
 
 
 @app.route(f"{settings.IMAGES_ROOT}/<string:filename>")
