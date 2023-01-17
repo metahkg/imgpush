@@ -176,7 +176,7 @@ def liveness():
     key_func=lambda: f"user{g.get('user')['id']}" if g.get("user") else get_remote_address()
 )
 def upload_image():
-    if (settings.UPLOAD_REQUIRE_AUTH):
+    if (settings.UPLOAD_REQUIRE_AUTH == True or settings.UPLOAD_REQUIRE_AUTH == "true"):
         if not g.get("user"):
             return jsonify(error="Unauthorized"), 401
     _clear_imagemagick_temp_files()
@@ -187,7 +187,7 @@ def upload_image():
     if "file" in request.files:
         file = request.files["file"]
         file.save(tmp_filepath)
-    elif not settings.DISABLE_URL_UPLOAD and "url" in request.json:
+    elif (settings.DISABLE_URL_UPLOAD != True and settings.DISABLE_URL_UPLOAD != "true") and "url" in request.json:
         urllib.request.urlretrieve(request.json["url"], tmp_filepath)
     else:
         return jsonify(error="File is missing!"), 400
@@ -220,21 +220,21 @@ def upload_image():
     if error:
         return jsonify(error=error), 400
 
-    return jsonify(filename=output_filename, path=f"{settings.IMAGES_ROOT}/{output_filename}", url=f"{request.host_url}{settings.IMAGES_ROOT}/{output_filename}"), 200
+    return jsonify(filename=output_filename, path=f"{settings.IMAGES_ROOT}/{output_filename}", url=f"{request.host_url[:-1]}{settings.IMAGES_ROOT}/{output_filename}"), 200
 
 
 @app.route(f"{settings.IMAGES_ROOT}/<string:filename>")
 @limiter.exempt
 def get_image(filename):
-    if (settings.GET_REQUIRE_AUTH):
-        if not request.authorization or not g.get("user"):
+    if (settings.GET_REQUIRE_AUTH == True or settings.GET_REQUIRE_AUTH == "true"):
+        if not g.get("user"):
             return jsonify(error="Unauthorized"), 401
     width = request.args.get("w", "")
     height = request.args.get("h", "")
 
     path = os.path.join(settings.IMAGES_DIR, filename)
 
-    if (not settings.DISABLE_RESIZE) and ((width or height) and (os.path.isfile(path))):
+    if (settings.DISABLE_RESIZE != True and settings.DISABLE_RESIZE != "true") and ((width or height) and (os.path.isfile(path))):
         try:
             width = _get_size_from_string(width)
             height = _get_size_from_string(height)
