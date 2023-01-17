@@ -25,7 +25,7 @@ app.wsgi_app = ProxyFix(app.wsgi_app)
 
 CORS(app, origins=settings.ALLOWED_ORIGINS)
 app.config["MAX_CONTENT_LENGTH"] = settings.MAX_SIZE_MB * 1024 * 1024
-limiter = Limiter(app, key_func=get_remote_address, default_limits=[])
+limiter = Limiter(app, default_limits=[])
 
 app.USE_X_SENDFILE = True
 
@@ -173,7 +173,7 @@ def liveness():
             f"{settings.MAX_UPLOADS_PER_MINUTE}/minute",
         ]
     ),
-    key_func=lambda: f"user{request.user['id']}" if request.user else request.remote_addr
+    key_func=lambda: f"user{request.user['id']}" if request.user else get_remote_address()
 )
 def upload_image():
     if (settings.UPLOAD_REQUIRE_AUTH):
