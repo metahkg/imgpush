@@ -1,9 +1,10 @@
-FROM python:3.6-slim
+FROM python:3.10-slim
 
 RUN apt-get update && \
     apt-get install -y \
     libmagickwand-dev curl \
-    nginx
+    nginx \
+    ninja-build
 
 COPY requirements.txt .
 COPY nginx.conf /etc/nginx/conf.d/default.conf
