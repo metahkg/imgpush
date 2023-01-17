@@ -109,7 +109,7 @@ def _generate_random_filename():
     if settings.NAME_STRATEGY == "randomstr":
         return "".join(
             random.choices(
-                string.ascii_lowercase + string.digits + string.ascii_uppercase, k=5
+                string.ascii_lowercase + string.digits + string.ascii_uppercase, k=6
             )
         )
 
