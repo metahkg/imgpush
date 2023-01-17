@@ -228,7 +228,7 @@ def get_image(filename):
 
     path = os.path.join(settings.IMAGES_DIR, filename)
 
-    if (width or height) and (os.path.isfile(path)):
+    if (not settings.DISABLE_RESIZE) and ((width or height) and (os.path.isfile(path))):
         try:
             width = _get_size_from_string(width)
             height = _get_size_from_string(height)
