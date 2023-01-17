@@ -26,7 +26,7 @@ CORS(app, origins=settings.ALLOWED_ORIGINS)
 app.config["MAX_CONTENT_LENGTH"] = settings.MAX_SIZE_MB * 1024 * 1024
 limiter = Limiter(app, key_func=get_remote_address, default_limits=[])
 
-app.use_x_sendfile = True
+app.USE_X_SENDFILE = True
 
 
 if settings.NUDE_FILTER_MAX_THRESHOLD:
