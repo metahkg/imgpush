@@ -1,0 +1,5 @@
+.lh/
+venv/
+images/
+cache/
+__pycache__/
