@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+PORT = 5000
 IMAGES_DIR = "/images/"
 CACHE_DIR = "/cache/"
 OUTPUT_TYPE = None
