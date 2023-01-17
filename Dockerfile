@@ -15,9 +15,10 @@ COPY ./ImageMagick-6/policy.xml /etc/ImageMagick-6/policy.xml
 
 RUN mkdir /images
 RUN mkdir /cache
+RUN mkdir /certs
 
 COPY ./app /app
 
 WORKDIR /app
 
-CMD python wsgi.py
+CMD flask run --port "${PORT:-5000}" --host 0.0.0.0
