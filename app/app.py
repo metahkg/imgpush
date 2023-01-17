@@ -195,7 +195,7 @@ def upload_image():
     if "file" in request.files:
         file = request.files["file"]
         file.save(tmp_filepath)
-    elif "url" in request.json:
+    elif not settings.DISABLE_URL_UPLOAD and "url" in request.json:
         urllib.request.urlretrieve(request.json["url"], tmp_filepath)
     else:
         return jsonify(error="File is missing!"), 400
