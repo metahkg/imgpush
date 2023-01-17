@@ -1,0 +1,41 @@
+docker-build:
+  image: docker:latest
+  stage: build
+  services:
+    - docker:dind
+  before_script:
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
+  script:
+    - |
+      if [[ "$CI_COMMIT_BRANCH" == "$CI_DEFAULT_BRANCH" ]]; then
+        tag=""
+        echo "Running on default branch '$CI_DEFAULT_BRANCH': tag = 'latest'"
+      else
+        tag=":$CI_COMMIT_REF_SLUG"
+        echo "Running on branch '$CI_COMMIT_BRANCH': tag = $tag"
+      fi
+    - docker buildx create --use
+    - docker buildx build -f Dockerfile --push --pull -t "${CI_REGISTRY_IMAGE}${tag}" -t "${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}" --platform linux/amd64,linux/arm64/v8,linux/arm/v7 .
+  rules:
+    - if: $CI_COMMIT_BRANCH == "master" && $PULL != "true"
+      exists:
+        - Dockerfile
+
+pull:
+  image: alpine:latest
+  before_script:
+    - apk add git
+    - git checkout master
+    - git remote set-url origin https://root:$gitlab_token@$CI_SERVER_HOST/$CI_PROJECT_PATH.git
+    - git remote add upstream https://github.com/hauxir/imgpush || git remote set-url upstream https://github.com/hauxir/imgpush
+    - git config --global user.email "bot@metahkg.org"
+    - git config --global user.name "metahkg-bot"
+    - git config pull.rebase false
+    - git pull origin master
+  script:
+    - |
+      git fetch upstream
+      git merge -X theirs upstream/master -m "Pull upstream" --allow-unrelated-histories
+      git push origin --all
+  rules:
+    - if: $PULL == "true"
