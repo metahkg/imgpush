@@ -9,7 +9,7 @@ import uuid
 
 import filetype
 import timeout_decorator
-from flask import Flask, jsonify, request, send_from_directory, Response
+from flask import Flask, jsonify, request, send_from_directory, Response, g
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -34,11 +34,11 @@ def before_request():
     try:
         user = verify(request.headers.get('Authorization')[7:])
         if user:
-            request.user = user
+            g.user = user
         else:
-            request.user = None
+            g.user = None
     except:
-        request.user = None
+        g.user = None
 
 
 @app.after_request
@@ -173,11 +173,11 @@ def liveness():
             f"{settings.MAX_UPLOADS_PER_MINUTE}/minute",
         ]
     ),
-    key_func=lambda: f"user{request.user['id']}" if request.user else get_remote_address()
+    key_func=lambda: f"user{g.get('user')['id']}" if g.get("user") else get_remote_address()
 )
 def upload_image():
     if (settings.UPLOAD_REQUIRE_AUTH):
-        if not request.authorization or not request.user:
+        if not g.get("user"):
             return jsonify(error="Unauthorized"), 401
     _clear_imagemagick_temp_files()
 
@@ -227,7 +227,7 @@ def upload_image():
 @limiter.exempt
 def get_image(filename):
     if (settings.GET_REQUIRE_AUTH):
-        if not request.authorization or not request.user:
+        if not request.authorization or not g.get("user"):
             return jsonify(error="Unauthorized"), 401
     width = request.args.get("w", "")
     height = request.args.get("h", "")
