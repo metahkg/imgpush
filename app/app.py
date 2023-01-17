@@ -16,6 +16,7 @@ from flask_limiter.util import get_remote_address
 from wand.exceptions import MissingDelegateError
 from wand.image import Image
 from werkzeug.middleware.proxy_fix import ProxyFix
+from jwt import verify
 
 import settings
 
@@ -34,6 +35,18 @@ if settings.NUDE_FILTER_MAX_THRESHOLD:
     nude_classifier = NudeClassifier()
 else:
     nude_classifier = None
+
+
+@app.before_request
+def before_request():
+    try:
+        user = verify(request.headers.get('Authorization')[7:])
+        if user:
+            request.user = user
+        else:
+            request.user = None
+    except:
+        request.user = None
 
 
 @app.after_request
@@ -146,8 +159,8 @@ def _resize_image(path, width, height):
 
 @app.route("/", methods=["GET"])
 def root():
-    return """
-<form action="/" method="post" enctype="multipart/form-data">
+    return f"""
+<form action="{settings.UPLOAD_ROUTE}" method="post" enctype="multipart/form-data">
     <input type="file" name="file" id="file">
     <input type="submit" value="Upload" name="submit">
 </form>
@@ -167,9 +180,13 @@ def liveness():
             f"{settings.MAX_UPLOADS_PER_HOUR}/hour;",
             f"{settings.MAX_UPLOADS_PER_MINUTE}/minute",
         ]
-    )
+    ),
+    key_func=lambda: f"user{request.user['id']}" if request.user else request.remote_addr
 )
 def upload_image():
+    if (settings.UPLOAD_REQUIRE_AUTH):
+        if not request.authorization or not request.user:
+            return jsonify(error="Unauthorized"), 401
     _clear_imagemagick_temp_files()
 
     random_string = _get_random_filename()
@@ -217,12 +234,15 @@ def upload_image():
     if error:
         return jsonify(error=error), 400
 
-    return jsonify(filename=output_filename)
+    return jsonify(filename=output_filename, path=f"{settings.IMAGES_ROOT}/{output_filename}", url=f"{request.origin}{settings.IMAGES_ROOT}/{output_filename}"), 200
 
 
 @app.route(f"{settings.IMAGES_ROOT}/<string:filename>")
 @limiter.exempt
 def get_image(filename):
+    if (settings.GET_REQUIRE_AUTH):
+        if not request.authorization or not request.user:
+            return jsonify(error="Unauthorized"), 401
     width = request.args.get("w", "")
     height = request.args.get("h", "")
 
