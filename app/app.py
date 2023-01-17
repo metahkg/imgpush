@@ -159,7 +159,7 @@ def liveness():
     return Response(status=200)
 
 
-@app.route("/", methods=["POST"])
+@app.route(settings.UPLOAD_ROUTE, methods=["POST"])
 @limiter.limit(
     "".join(
         [
@@ -220,7 +220,7 @@ def upload_image():
     return jsonify(filename=output_filename)
 
 
-@app.route("/<string:filename>")
+@app.route(f"{settings.IMAGES_ROOT}/<string:filename>")
 @limiter.exempt
 def get_image(filename):
     width = request.args.get("w", "")
