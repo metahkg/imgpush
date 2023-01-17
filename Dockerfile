@@ -9,11 +9,11 @@ RUN apt-get update && \
 COPY requirements.txt ./
 
 RUN apt-get update && \
-    apt-get install ninja-build && \
+    apt-get install -y ninja-build && \
     pip install -r requirements.txt && \
-    apt-get remove ninja-build && \
+    apt-get remove -y ninja-build && \
     apt-get clean autoclean && \
-    apt-get autoremove --yes && \
+    apt-get autoremove -y && \
     rm -rf /var/lib/{apt,dpkg,cache,log}/
 
 COPY nginx.conf /etc/nginx/conf.d/default.conf
