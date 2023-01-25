@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "imgpush"
+version = "0.1.0"
+description = "Minimalist Self-hosted Image Service for user submitted images in your app (e.g. avatars)."
+authors = ["wcyat <wcyat@wcyat.me>"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+Flask = "^2.2.2"
+Flask-Cors = "^3.0.10"
+Flask-Limiter = "^3.1.0"
+Wand = "^0.6.11"
+Werkzeug = "^2.2.2"
+python-jwt = "^4.0.0"
+
+[tool.poetry.dev-dependencies]
+autopep8 = "^2.0.1"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
