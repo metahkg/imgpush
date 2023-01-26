@@ -5,7 +5,7 @@ COPY ./pyproject.toml ./poetry.lock ./
 RUN apt-get update && \
     apt-get install -y libmagickwand-dev && \
     rm -rf /var/lib/{apt,dpkg,cache,log}/
-    
+
 RUN pip install poetry
 
 RUN poetry config virtualenvs.create false
