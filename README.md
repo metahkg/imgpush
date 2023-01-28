@@ -136,6 +136,7 @@ livenessProbe:
 | GET_REQUIRE_AUTH | "False" | Whether to require authentication for get requests |
 | DISABLE_RESIZE | "False" | Disable resizing images |
 | DISABLE_URL_UPLOAD | "False" | Disable uploading using urls |
+| DISABLE_UPLOAD_FORM | "False" | Disable upload form |
 | UPLOAD_ROUTE | "/" | The route for uploading images |
 | IMAGES_ROOT | "" | The root for images get requests |
 

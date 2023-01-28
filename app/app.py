@@ -151,6 +151,8 @@ def _resize_image(path, width, height):
 
 @app.route("/", methods=["GET"])
 def root():
+    if settings.DISABLE_UPLOAD_FORM:
+        return jsonify(error="Not found"), 404
     return f"""
 <form action="{settings.UPLOAD_ROUTE}" method="post" enctype="multipart/form-data">
     <input type="file" name="file" id="file">
