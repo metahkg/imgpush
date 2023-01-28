@@ -29,11 +29,17 @@ Uploading an image by URL:
 
 Fetching a file in a specific size(e.g. 320x240):
 
-```
+```bash
 http://some.host/somename.png?w=320&h=240
 ```
 
 returns the image cropped to the desired size
+
+Deleting an image, it requires jwt config to be set:
+
+```bash
+curl --location --request DELETE 'http://some.host/somename.png' --header 'Authorization: Bearer ey......'
+```
 
 ## Running
 
