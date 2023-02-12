@@ -27,16 +27,13 @@ docker-build:
     - docker run --privileged --rm tonistiigi/binfmt --install all
     - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
   script:
-    - |
-      if [[ "$CI_COMMIT_BRANCH" == "$CI_DEFAULT_BRANCH" ]]; then
-        tag=""
-        echo "Running on default branch '$CI_DEFAULT_BRANCH': tag = 'latest'"
-      else
-        tag=":$CI_COMMIT_REF_SLUG"
-        echo "Running on branch '$CI_COMMIT_BRANCH': tag = $tag"
-      fi
     - docker buildx create --use
-    - docker buildx build -f Dockerfile --push --pull -t "${CI_REGISTRY_IMAGE}${tag}" -t "${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}" --platform linux/amd64,linux/arm64 .
+    - docker buildx build -f Dockerfile --push --pull --platform linux/amd64,linux/arm64
+       -t "${CI_REGISTRY_IMAGE}/${CI_COMMIT_BRANCH}:latest"
+       -t "${CI_REGISTRY_IMAGE}/${CI_COMMIT_BRANCH}:${CI_COMMIT_SHORT_SHA}" .
+    - if [ "$CI_COMMIT_BRANCH" = "master" ]; then
+       docker buildx build -f Dockerfile --push --pull --platform linux/amd64,linux/arm64
+       -t "${CI_REGISTRY_IMAGE}:latest" .; fi;
   rules:
     - if: $CI_COMMIT_BRANCH == "master" && $PULL != "true"
       exists:
