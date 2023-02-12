@@ -38,7 +38,9 @@ docker-build:
     - docker buildx create --use
     - docker buildx build -f Dockerfile --push --pull -t "${CI_REGISTRY_IMAGE}${tag}" -t "${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}" --platform linux/amd64,linux/arm64 .
   rules:
-    - if: $CI_COMMIT_BRANCH == "master" && $PULL != "true"
+    - if: $PULL == "true"
+      when: never
+    - if: $CI_COMMIT_BRANCH == "master" || $CI_COMMIT_BRANCH == "dev"
       exists:
         - Dockerfile
 
