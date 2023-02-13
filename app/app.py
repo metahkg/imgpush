@@ -179,7 +179,7 @@ def liveness():
     key_func=lambda: f"user{g.get('user')['id']}" if g.get("user") else get_remote_address()
 )
 def upload_image():
-    if (settings.UPLOAD_REQUIRE_AUTH is True or settings.UPLOAD_REQUIRE_AUTH == "true"):
+    if settings.UPLOAD_REQUIRE_AUTH is True:
         if not g.get("user"):
             return jsonify(error="Unauthorized"), 401
     _clear_imagemagick_temp_files()
@@ -190,7 +190,7 @@ def upload_image():
     if "file" in request.files:
         file = request.files["file"]
         file.save(tmp_filepath)
-    elif (settings.DISABLE_URL_UPLOAD is not True and settings.DISABLE_URL_UPLOAD != "true") and "url" in request.json:
+    elif settings.DISABLE_URL_UPLOAD is not True and "url" in request.json:
         urllib.request.urlretrieve(request.json["url"], tmp_filepath)
     else:
         return jsonify(error="File is missing!"), 400
@@ -229,7 +229,7 @@ def upload_image():
 @app.route(f"{settings.IMAGES_ROOT}/<string:filename>")
 @limiter.exempt
 def get_image(filename):
-    if (settings.GET_REQUIRE_AUTH is True or settings.GET_REQUIRE_AUTH == "true"):
+    if settings.GET_REQUIRE_AUTH is True:
         if not g.get("user"):
             return jsonify(error="Unauthorized"), 401
     width = request.args.get("w", "")
@@ -237,7 +237,7 @@ def get_image(filename):
 
     path = os.path.join(settings.IMAGES_DIR, filename)
 
-    if (settings.DISABLE_RESIZE is not True and settings.DISABLE_RESIZE != "true") and ((width or height) and (os.path.isfile(path))):
+    if settings.DISABLE_RESIZE is not True and ((width or height) and (os.path.isfile(path))):
         try:
             width = _get_size_from_string(width)
             height = _get_size_from_string(height)
