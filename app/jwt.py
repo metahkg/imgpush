@@ -1,4 +1,5 @@
-import python_jwt as jwt, jwcrypto.jwk as jwk
+import python_jwt as jwt
+import jwcrypto.jwk as jwk
 import settings
 
 

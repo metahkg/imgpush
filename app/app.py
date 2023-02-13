@@ -29,6 +29,7 @@ limiter = Limiter(app, default_limits=[])
 
 app.USE_X_SENDFILE = True
 
+
 @app.before_request
 def before_request():
     try:
@@ -263,6 +264,8 @@ def get_image(filename):
     return send_from_directory(settings.IMAGES_DIR, filename)
 
 # https://github.com/hauxir/imgpush/pull/33
+
+
 @app.route(f"{settings.IMAGES_ROOT}/<string:filename>", methods=["DELETE"])
 def delete_image(filename):
     if getattr(g.get("user"), "role", None) != "admin":
@@ -274,6 +277,7 @@ def delete_image(filename):
         return jsonify(error="File not found"), 404
 
     return Response(status=204)
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=settings.PORT, threaded=True)
