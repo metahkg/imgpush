@@ -3,7 +3,8 @@ FROM python:3.10-slim
 COPY ./pyproject.toml ./poetry.lock ./
 
 RUN apt-get update && \
-    apt-get install -y libmagickwand-dev=8:6.9.11.60+dfsg-1.3+deb11u1 && \
+    apt-get install -y --no-install-recommends \
+    libmagickwand-dev=8:6.9.11.60+dfsg-1.3+deb11u1 && \
     rm -rf /var/lib/{apt,dpkg,cache,log}/
 
 RUN pip install poetry=1.1.13
