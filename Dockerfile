@@ -7,11 +7,11 @@ RUN apt-get update && \
     libmagickwand-dev=8:6.9.11.60+dfsg-1.3+deb11u1 && \
     rm -rf /var/lib/{apt,dpkg,cache,log}/
 
-RUN pip install poetry=1.1.13
+RUN pip install --no-cache-dir poetry=1.1.13
 
 RUN poetry config virtualenvs.create false
 
-RUN poetry install --no-dev --no-interaction
+RUN poetry install --no-dev --no-interaction && rm -rf ~/.cache/pypoetry/{cache,artifacts}
 
 COPY ./ImageMagick-6/policy.xml /etc/ImageMagick-6/policy.xml
 
