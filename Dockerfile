@@ -28,4 +28,6 @@ RUN chown python:python /images /cache /certs /app
 
 USER python
 
-CMD FLASK_APP=app.py flask run --port "${PORT:-5000}" --host 0.0.0.0
+ENV FLASK_APP=app.py
+
+CMD ["sh", "-c", "flask run --port ${PORT:-5000} --host 0.0.0.0"]
