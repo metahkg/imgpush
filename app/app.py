@@ -5,7 +5,10 @@ import os
 import random
 import string
 import urllib.request
+from urllib.parse import urlparse
 import uuid
+import ipaddress
+import socket
 
 import filetype
 import timeout_decorator
@@ -191,7 +194,17 @@ def upload_image():
         file = request.files["file"]
         file.save(tmp_filepath)
     elif settings.DISABLE_URL_UPLOAD is not True and "url" in request.json:
-        urllib.request.urlretrieve(request.json["url"], tmp_filepath)
+        if request.json["url"].lower().startswith('http'):
+            ip: (ipaddress.IPv4Address | ipaddress.IPv6Address) = None
+            try:
+                ip = ipaddress.ip_address(socket.gethostbyname(urlparse(request.json["url"]).netloc))
+            except Exception:
+                return jsonify(error="Failed to resolve host"), 400
+            if ip.is_private or ip.is_loopback or ip.is_link_local:
+                return jsonify(error="Refusing to connect to local or private address"), 400
+            urllib.request.urlretrieve(request.json["url"], tmp_filepath)
+        else:
+            return jsonify(error="Invalid URL"), 400
     else:
         return jsonify(error="File is missing!"), 400
 
