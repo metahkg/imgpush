@@ -4,6 +4,15 @@ import settings
 
 
 def verify(token: str) -> dict | None:
+    """
+    The verify function takes a token as an argument and returns the claims
+    if the token is valid, otherwise it returns None.
+
+
+    :param token: str: Pass in the jwt token
+    :return: A dictionary of claims if the token is valid, or none otherwise
+    :doc-author: Trelent
+    """
     if settings.JWT_PUBLIC_KEY or settings.JWT_SECRET:
         try:
             claims = None
