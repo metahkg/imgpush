@@ -108,6 +108,7 @@ def _generate_random_filename():
                 string.ascii_lowercase + string.digits + string.ascii_uppercase, k=6
             )
         )
+    return None
 
 
 def _resize_image(path, width, height):
