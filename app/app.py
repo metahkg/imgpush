@@ -303,10 +303,8 @@ def upload_image():
         with Image(filename=tmp_filepath) as img:
             img.strip()
             if output_type not in ["gif"]:
-                with img.sequence[0] as first_frame:
-                    with Image(image=first_frame) as first_frame_img:
-                        with first_frame_img.convert(output_type) as converted:
-                            converted.save(filename=output_path)
+                with img.sequence[0] as first_frame, Image(image=first_frame) as first_frame_img, first_frame_img.convert(output_type) as converted:
+                    converted.save(filename=output_path)
             else:
                 with img.convert(output_type) as converted:
                     converted.save(filename=output_path)
