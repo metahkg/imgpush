@@ -137,8 +137,10 @@ def _get_random_filename():
 def _generate_random_filename():
     """
     The _generate_random_filename function generates a random filename for the uploaded file.
-    The function is called by the upload_file() function, which uses it to generate a filename for each uploaded file.
-    The _generate_random_filename() function accepts no arguments and returns a string containing the randomly generated filename.
+    The function is called by the upload_file() function, which uses it to generate a filename
+    for each uploaded file.
+    The _generate_random_filename() function accepts no arguments and returns a string containing
+    the randomly generated filename.
 
     :return: A random string of length 6
     :doc-author: Trelent
@@ -156,8 +158,10 @@ def _generate_random_filename():
 
 def _resize_image(path, width, height):
     """
-    The _resize_image function takes a path to an image and resizes it to the specified width and height.
-    If either width or height is not specified, the function will resize the image so that its current aspect ratio matches that of
+    The _resize_image function takes a path to an image and resizes it to the specified
+    width and height.
+    If either width or height is not specified, the function will resize the image so that
+    its current aspect ratio matches that of
     the desired dimensions. If both are not specified, then no resizing occurs.
 
     :param path: Specify the image to be resized
@@ -296,7 +300,9 @@ def upload_image():
         with Image(filename=tmp_filepath) as img:
             img.strip()
             if output_type not in ["gif"]:
-                with img.sequence[0] as first_frame, Image(image=first_frame) as first_frame_img, first_frame_img.convert(output_type) as converted:
+                with img.sequence[0] as first_frame, \
+                        Image(image=first_frame) as first_frame_img, \
+                        first_frame_img.convert(output_type) as converted:
                     converted.save(filename=output_path)
             else:
                 with img.convert(output_type) as converted:
