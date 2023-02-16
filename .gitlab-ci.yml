@@ -35,7 +35,9 @@ docker-build:
        docker buildx build -f Dockerfile --push --pull --platform linux/amd64,linux/arm64
        -t "${CI_REGISTRY_IMAGE}:latest" .; fi;
   rules:
-    - if: $CI_COMMIT_BRANCH == "master" && $PULL != "true"
+    - if: $PULL == "true"
+      when: never
+    - if: $CI_COMMIT_BRANCH == "master" || $CI_COMMIT_BRANCH == "dev"
       exists:
         - Dockerfile
 
@@ -58,13 +60,49 @@ pull:
   rules:
     - if: $PULL == "true"
 
-test:
-  stage: test
-  allow_failure: true
-
 build:
   stage: build
   allow_failure: true
+
+test:
+  stage: test
+  allow_failure: true
+  rules:
+     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+     - if: $CI_COMMIT_TAG
+     - if: $CI_COMMIT_BRANCH
+
+dast:
+  stage: dast
+  allow_failure: true
+  rules:
+    - if: $CI_COMMIT_BRANCH
+      when: never
+
+code_quality:
+  stage: test
+  rules:
+     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+     - if: $CI_COMMIT_TAG
+     - if: $CI_COMMIT_BRANCH
+
+container_scanning:
+  stage: review
+  needs: [ "docker-build" ]
+  variables:
+    GIT_STRATEGY: fetch
+    CI_APPLICATION_REPOSITORY: $CI_REGISTRY_IMAGE
+    CI_APPLICATION_TAG: $CI_COMMIT_SHORT_SHA
+    CLAIR_OUTPUT: High
+  artifacts:
+    paths:
+      - gl-container-scanning-report.json
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: never
+    - if: $CI_COMMIT_BRANCH == "master" || $CI_COMMIT_BRANCH == "dev"
+      exists:
+        - Dockerfile
 
 include:
   - template: Auto-DevOps.gitlab-ci.yml
