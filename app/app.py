@@ -74,16 +74,12 @@ def after_request(resp):
 
 
 class InvalidSize(Exception):
-    """
-    Raised when the size of the image is invalid.
-    """
+    """Raised when the size of the image is invalid."""
     pass
 
 
 class CollisionError(Exception):
-    """
-    Raised when the filename is already present.
-    """
+    """Raised when the filename is already present."""
     pass
 
 
