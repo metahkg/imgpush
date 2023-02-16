@@ -76,7 +76,7 @@ dast:
   stage: dast
   allow_failure: true
   rules:
-    - if: 1
+    - if: $CI_COMMIT_BRANCH
       when: never
 
 code_quality:
