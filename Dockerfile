@@ -7,7 +7,7 @@ RUN apt-get update && \
     libmagickwand-dev=8:6.9.11.60+dfsg-1.3+deb11u1 && \
     rm -rf /var/lib/{apt,dpkg,cache,log}/
 
-RUN pip install --no-cache-dir poetry=1.1.13 && \
+RUN pip install --no-cache-dir poetry==1.1.13 && \
     poetry config virtualenvs.create false && \
     poetry install --no-dev --no-interaction && \
     rm -rf ~/.cache/pypoetry/{cache,artifacts}
