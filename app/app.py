@@ -263,9 +263,11 @@ def upload_image():
     :return: A json object containing the filename,
     :doc-author: Trelent
     """
-    if settings.UPLOAD_REQUIRE_AUTH is True:
-        if not g.get("user"):
-            return jsonify(error="Unauthorized"), 401
+    if (
+        settings.UPLOAD_REQUIRE_AUTH is True
+        and not g.get("user")
+    ):
+        return jsonify(error="Unauthorized"), 401
     _clear_imagemagick_temp_files()
 
     random_string = _get_random_filename()
@@ -337,9 +339,8 @@ def get_image(filename):
     :return: The image with the given filename
     :doc-author: Trelent
     """
-    if settings.GET_REQUIRE_AUTH is True:
-        if not g.get("user"):
-            return jsonify(error="Unauthorized"), 401
+    if settings.GET_REQUIRE_AUTH is True and not g.get("user"):
+        return jsonify(error="Unauthorized"), 401
     width = request.args.get("w", "")
     height = request.args.get("h", "")
 
