@@ -172,7 +172,6 @@ def _resize_image(path, width, height):
     :return: An image object
     :doc-author: Trelent
     """
-    # filename_without_extension, extension = os.path.splitext(path)
 
     with Image(filename=path) as src:
         img = src.clone()
