@@ -91,7 +91,7 @@ container_scanning:
   needs: [ "docker-build" ]
   variables:
     GIT_STRATEGY: fetch
-    CI_APPLICATION_REPOSITORY: $CI_REGISTRY_IMAGE
+    CI_APPLICATION_REPOSITORY: $CI_REGISTRY_IMAGE/$CI_COMMIT_BRANCH
     CI_APPLICATION_TAG: $CI_COMMIT_SHORT_SHA
     CLAIR_OUTPUT: High
   artifacts:
