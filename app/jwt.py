@@ -1,16 +1,30 @@
-import python_jwt as jwt, jwcrypto.jwk as jwk
+import python_jwt as jwt
+import jwcrypto.jwk as jwk
 import settings
 
 
 def verify(token: str) -> dict | None:
+    """
+    The verify function takes a token as an argument and returns the claims
+    if the token is valid, otherwise it returns None.
+
+
+    :param token: str: Pass in the jwt token
+    :return: A dictionary of claims if the token is valid, or none otherwise
+    :doc-author: Trelent
+    """
     if settings.JWT_PUBLIC_KEY or settings.JWT_SECRET:
         try:
-            (_header, claims) = jwt.verify_jwt(token, pub_key=jwk.JWK.from_pem(open(settings.JWT_PUBLIC_KEY, "rb").read())
-                       if settings.JWT_PUBLIC_KEY else jwk.JWK.from_password(settings.JWT_SECRET),
-                       allowed_algs=[settings.JWT_ALGORITHM or
-                       ("RS256" if settings.JWT_PRIVATE_KEY else "HS256")], checks_optional=True)
+            claims = None
+            if settings.JWT_PUBLIC_KEY:
+                with open(settings.JWT_PUBLIC_KEY, "rb") as pub_key:
+                    (_header, claims) = jwt.verify_jwt(token, pub_key=jwk.JWK.from_pem(pub_key.read()),
+                                                       allowed_algs=[settings.JWT_ALGORITHM or "RS256"], checks_optional=True)
+            else:
+                (_header, claims) = jwt.verify_jwt(token, pub_key=jwk.JWK.from_password(settings.JWT_SECRET),
+                                                   allowed_algs=[settings.JWT_ALGORITHM or "HS256"], checks_optional=True)
             return claims
-        except:
+        except Exception:
             return None
     else:
         return None

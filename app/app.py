@@ -5,7 +5,10 @@ import os
 import random
 import string
 import urllib.request
+from urllib.parse import urlparse
 import uuid
+import ipaddress
+import socket
 
 import filetype
 import timeout_decorator
@@ -29,20 +32,39 @@ limiter = Limiter(app, default_limits=[])
 
 app.USE_X_SENDFILE = True
 
+
 @app.before_request
 def before_request():
+    """
+    The before_request function is called before the request handler function.
+    It sets g.user to the user object if a valid authorization header is provided,
+    otherwise it sets g.user to None.
+
+    :return: The user object if a valid token is
+    :doc-author: Trelent
+    """
     try:
         user = verify(request.headers.get('Authorization')[7:])
         if user:
             g.user = user
         else:
             g.user = None
-    except:
+    except Exception:
         g.user = None
 
 
 @app.after_request
 def after_request(resp):
+    """
+    The after_request function is a Flask decorator that modifies the response
+    object before it is returned to the client. The X-Sendfile header allows for
+    the use of Nginx as a proxy server, which can significantly speed up file
+    transfers. This function also sets Referrer-Policy to &quot;no-referrer-when-downgrade&quot;.
+
+    :param resp: Return the response to the user
+    :return: The response object
+    :doc-author: Trelent
+    """
     x_sendfile = resp.headers.get("X-Sendfile")
     if x_sendfile:
         resp.headers["X-Accel-Redirect"] = "/nginx/" + x_sendfile
@@ -52,14 +74,22 @@ def after_request(resp):
 
 
 class InvalidSize(Exception):
-    pass
+    """Raised when the size of the image is invalid."""
 
 
 class CollisionError(Exception):
-    pass
+    """Raised when the filename is already present."""
 
 
 def _get_size_from_string(size):
+    """
+    The _get_size_from_string function takes a string and returns an integer.
+    If the string is not a valid size, it returns an empty string.
+
+    :param size: Determine the size of the image to be returned
+    :return: The size as an integer or &quot;&quot;
+    :doc-author: Trelent
+    """
     try:
         size = int(size)
         if len(settings.VALID_SIZES) and size not in settings.VALID_SIZES:
@@ -87,6 +117,15 @@ def _clear_imagemagick_temp_files():
 
 
 def _get_random_filename():
+    """
+    The _get_random_filename function generates a random filename for an image.
+    It does this by generating a random string of length settings.RANDOM_STRING_LENGTH,
+    and then appending the appropriate file extension based on the MIME type of the image.
+    If that filename already exists in IMAGES_DIR, it will generate another one and check if it exists again.
+
+    :return: A random string of length 8
+    :doc-author: Trelent
+    """
     random_string = _generate_random_filename()
     if settings.NAME_STRATEGY == "randomstr":
         file_exists = len(glob.glob(f"{settings.IMAGES_DIR}/{random_string}.*")) > 0
@@ -96,6 +135,16 @@ def _get_random_filename():
 
 
 def _generate_random_filename():
+    """
+    The _generate_random_filename function generates a random filename for the uploaded file.
+    The function is called by the upload_file() function, which uses it to generate a filename
+    for each uploaded file.
+    The _generate_random_filename() function accepts no arguments and returns a string containing
+    the randomly generated filename.
+
+    :return: A random string of length 6
+    :doc-author: Trelent
+    """
     if settings.NAME_STRATEGY == "uuidv4":
         return str(uuid.uuid4())
     if settings.NAME_STRATEGY == "randomstr":
@@ -104,11 +153,23 @@ def _generate_random_filename():
                 string.ascii_lowercase + string.digits + string.ascii_uppercase, k=6
             )
         )
+    return None
 
 
 def _resize_image(path, width, height):
-    filename_without_extension, extension = os.path.splitext(path)
+    """
+    The _resize_image function takes a path to an image and resizes it to the specified
+    width and height.
+    If either width or height is not specified, the function will resize the image so that
+    its current aspect ratio matches that of
+    the desired dimensions. If both are not specified, then no resizing occurs.
 
+    :param path: Specify the image to be resized
+    :param width: Set the width of the image
+    :param height: Resize the image to a specific height
+    :return: An image object
+    :doc-author: Trelent
+    """
     with Image(filename=path) as src:
         img = src.clone()
 
@@ -151,6 +212,12 @@ def _resize_image(path, width, height):
 
 @app.route("/", methods=["GET"])
 def root():
+    """
+    The root function returns a string containing the HTML for an upload form.
+
+    :return: A form that will allow the user to upload a file
+    :doc-author: Trelent
+    """
     if settings.DISABLE_UPLOAD_FORM:
         return jsonify(error="Not found"), 404
     return f"""
@@ -163,6 +230,13 @@ def root():
 
 @app.route("/liveness", methods=["GET"])
 def liveness():
+    """
+    The liveness function is used to determine if the server is still alive.
+    It returns a status code of 200, indicating that the server is alive.
+
+    :return: A status code of 200, indicating that the function is running
+    :doc-author: Trelent
+    """
     return Response(status=200)
 
 
@@ -178,9 +252,19 @@ def liveness():
     key_func=lambda: f"user{g.get('user')['id']}" if g.get("user") else get_remote_address()
 )
 def upload_image():
-    if (settings.UPLOAD_REQUIRE_AUTH == True or settings.UPLOAD_REQUIRE_AUTH == "true"):
-        if not g.get("user"):
-            return jsonify(error="Unauthorized"), 401
+    """
+    The upload_image function is used to upload an image file to the server.
+    It accepts a POST request with either a file or url field, and returns the filename of the uploaded image.
+    If there is an error uploading, it will return a 400 response with an error message.
+
+    :return: A json object containing the filename,
+    :doc-author: Trelent
+    """
+    if (
+        settings.UPLOAD_REQUIRE_AUTH is True
+        and not g.get("user")
+    ):
+        return jsonify(error="Unauthorized"), 401
     _clear_imagemagick_temp_files()
 
     random_string = _get_random_filename()
@@ -189,8 +273,18 @@ def upload_image():
     if "file" in request.files:
         file = request.files["file"]
         file.save(tmp_filepath)
-    elif (settings.DISABLE_URL_UPLOAD != True and settings.DISABLE_URL_UPLOAD != "true") and "url" in request.json:
-        urllib.request.urlretrieve(request.json["url"], tmp_filepath)
+    elif settings.DISABLE_URL_UPLOAD is not True and "url" in request.json:
+        if request.json["url"].lower().startswith('http'):
+            ip: (ipaddress.IPv4Address | ipaddress.IPv6Address) = None
+            try:
+                ip = ipaddress.ip_address(socket.gethostbyname(urlparse(request.json["url"]).netloc))
+            except Exception:
+                return jsonify(error="Failed to resolve host"), 400
+            if ip.is_private or ip.is_loopback or ip.is_link_local:
+                return jsonify(error="Refusing to connect to local or private address"), 400
+            urllib.request.urlretrieve(request.json["url"], tmp_filepath)
+        else:
+            return jsonify(error="Invalid URL"), 400
     else:
         return jsonify(error="File is missing!"), 400
 
@@ -206,10 +300,10 @@ def upload_image():
         with Image(filename=tmp_filepath) as img:
             img.strip()
             if output_type not in ["gif"]:
-                with img.sequence[0] as first_frame:
-                    with Image(image=first_frame) as first_frame_img:
-                        with first_frame_img.convert(output_type) as converted:
-                            converted.save(filename=output_path)
+                with img.sequence[0] as first_frame, \
+                        Image(image=first_frame) as first_frame_img, \
+                        first_frame_img.convert(output_type) as converted:
+                    converted.save(filename=output_path)
             else:
                 with img.convert(output_type) as converted:
                     converted.save(filename=output_path)
@@ -222,21 +316,34 @@ def upload_image():
     if error:
         return jsonify(error=error), 400
 
-    return jsonify(filename=output_filename, path=f"{settings.IMAGES_ROOT}/{output_filename}", url=f"{request.host_url[:-1]}{settings.IMAGES_ROOT}/{output_filename}"), 200
+    return jsonify(filename=output_filename,
+                   path=f"{settings.IMAGES_ROOT}/{output_filename}",
+                   url=f"{request.host_url[:-1]}{settings.IMAGES_ROOT}/{output_filename}"), 200
 
 
 @app.route(f"{settings.IMAGES_ROOT}/<string:filename>")
 @limiter.exempt
 def get_image(filename):
-    if (settings.GET_REQUIRE_AUTH == True or settings.GET_REQUIRE_AUTH == "true"):
-        if not g.get("user"):
-            return jsonify(error="Unauthorized"), 401
+    """
+    The get_image function is responsible for serving up images from the
+       image directory. It accepts a filename as an argument, and returns an
+       image file from the cache directory if it exists, or else it will return
+       the original image file itself. If resize parameters are passed in with
+       the request (e.g., w=100), then get_image will create a resized version of
+       that image and serve that back instead.
+
+    :param filename: Determine the path to the image file
+    :return: The image with the given filename
+    :doc-author: Trelent
+    """
+    if settings.GET_REQUIRE_AUTH is True and not g.get("user"):
+        return jsonify(error="Unauthorized"), 401
     width = request.args.get("w", "")
     height = request.args.get("h", "")
 
     path = os.path.join(settings.IMAGES_DIR, filename)
 
-    if (settings.DISABLE_RESIZE != True and settings.DISABLE_RESIZE != "true") and ((width or height) and (os.path.isfile(path))):
+    if settings.DISABLE_RESIZE is not True and ((width or height) and (os.path.isfile(path))):
         try:
             width = _get_size_from_string(width)
             height = _get_size_from_string(height)
@@ -263,8 +370,18 @@ def get_image(filename):
     return send_from_directory(settings.IMAGES_DIR, filename)
 
 # https://github.com/hauxir/imgpush/pull/33
+
+
 @app.route(f"{settings.IMAGES_ROOT}/<string:filename>", methods=["DELETE"])
 def delete_image(filename):
+    """
+    The delete_image function deletes an image from the images directory.
+    It takes a filename as its only argument and returns nothing.
+
+    :param filename: Specify the filename of the image to be deleted
+    :return: A response object with status code 204
+    :doc-author: Trelent
+    """
     if getattr(g.get("user"), "role", None) != "admin":
         return jsonify(error="Permission denied"), 403
     path = os.path.join(settings.IMAGES_DIR, filename)
@@ -274,6 +391,7 @@ def delete_image(filename):
         return jsonify(error="File not found"), 404
 
     return Response(status=204)
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=settings.PORT, threaded=True)
