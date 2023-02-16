@@ -41,7 +41,7 @@ def before_request():
             g.user = user
         else:
             g.user = None
-    except:
+    except Exception:
         g.user = None
 
 

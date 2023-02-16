@@ -15,7 +15,7 @@ def verify(token: str) -> dict | None:
                 (_header, claims) = jwt.verify_jwt(token, pub_key=jwk.JWK.from_password(settings.JWT_SECRET),
                  allowed_algs=[settings.JWT_ALGORITHM or "HS256"], checks_optional=True)
             return claims
-        except:
+        except Exception:
             return None
     else:
         return None
