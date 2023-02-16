@@ -112,7 +112,7 @@ def _generate_random_filename():
 
 
 def _resize_image(path, width, height):
-    filename_without_extension, extension = os.path.splitext(path)
+    # filename_without_extension, extension = os.path.splitext(path)
 
     with Image(filename=path) as src:
         img = src.clone()
