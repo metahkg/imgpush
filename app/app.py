@@ -433,6 +433,7 @@ def delete_image(filename, use_mongo=False):
     if use_mongo:
         try:
             fs.delete(ObjectId(filename))
+            return jsonify(success=True), 204
         except Exception as e:
             logger.error(e)
             return jsonify(error="File not found"), 404
