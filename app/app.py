@@ -1,10 +1,12 @@
 import datetime
+import logging
 import time
 import glob
 import os
 import random
 import string
 import urllib.request
+from io import BytesIO
 from urllib.parse import urlparse
 import uuid
 import ipaddress
@@ -12,19 +14,30 @@ import socket
 
 import filetype
 import timeout_decorator
+from bson import ObjectId
 from flask import Flask, jsonify, request, send_from_directory, Response, g
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from wand.exceptions import MissingDelegateError
 from wand.image import Image
+from PIL import Image as PILImage
 from werkzeug.middleware.proxy_fix import ProxyFix
 from jwt import verify
 
+from pymongo import MongoClient
+import gridfs
+
 import settings
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app)
+
+db: MongoClient = MongoClient(settings.MONGO_URI)
+fs: gridfs.GridFS = gridfs.GridFS(db)
 
 CORS(app, origins=settings.ALLOWED_ORIGINS)
 app.config["MAX_CONTENT_LENGTH"] = settings.MAX_SIZE_MB * 1024 * 1024
@@ -288,37 +301,49 @@ def upload_image():
     else:
         return jsonify(error="File is missing!"), 400
 
-    output_type = settings.OUTPUT_TYPE or filetype.guess_extension(tmp_filepath)
-    error = None
-
-    output_filename = os.path.basename(tmp_filepath) + f".{output_type}"
-    output_path = os.path.join(settings.IMAGES_DIR, output_filename)
-
     try:
-        if os.path.exists(output_path):
-            raise CollisionError
-        with Image(filename=tmp_filepath) as img:
-            img.strip()
-            if output_type not in ["gif"]:
-                with img.sequence[0] as first_frame, \
-                        Image(image=first_frame) as first_frame_img, \
-                        first_frame_img.convert(output_type) as converted:
-                    converted.save(filename=output_path)
-            else:
-                with img.convert(output_type) as converted:
-                    converted.save(filename=output_path)
-    except MissingDelegateError:
-        error = "Invalid Filetype"
-    finally:
-        if os.path.exists(tmp_filepath):
-            os.remove(tmp_filepath)
+        use_mongo = bool(request.json["use_mongo"])
+    except KeyError:
+        use_mongo = False
+    except Exception as e:
+        logger.error(e)
+        use_mongo = False
+    if not use_mongo:
+        output_type = settings.OUTPUT_TYPE or filetype.guess_extension(tmp_filepath)
+        error = None
 
-    if error:
-        return jsonify(error=error), 400
+        output_filename = os.path.basename(tmp_filepath) + f".{output_type}"
+        output_path = os.path.join(settings.IMAGES_DIR, output_filename)
 
-    return jsonify(filename=output_filename,
-                   path=f"{settings.IMAGES_ROOT}/{output_filename}",
-                   url=f"{request.host_url[:-1]}{settings.IMAGES_ROOT}/{output_filename}"), 200
+        try:
+            if os.path.exists(output_path):
+                raise CollisionError
+            with Image(filename=tmp_filepath) as img:
+                img.strip()
+                if output_type not in ["gif"]:
+                    with img.sequence[0] as first_frame, \
+                            Image(image=first_frame) as first_frame_img, \
+                            first_frame_img.convert(output_type) as converted:
+                        converted.save(filename=output_path)
+                else:
+                    with img.convert(output_type) as converted:
+                        converted.save(filename=output_path)
+        except MissingDelegateError:
+            error = "Invalid Filetype"
+        finally:
+            if os.path.exists(tmp_filepath):
+                os.remove(tmp_filepath)
+
+        if error:
+            return jsonify(error=error), 400
+
+        return jsonify(filename=output_filename,
+                       path=f"{settings.IMAGES_ROOT}/{output_filename}",
+                       url=f"{request.host_url[:-1]}{settings.IMAGES_ROOT}/{output_filename}"), 200
+    else:
+        output_file = fs.put(open(tmp_filepath, "rb"))
+        return jsonify(filename=output_file,
+                       url=f"{request.host_url[:-1]}{settings.MONGO_IMAGES_ROOT}/{output_file}"), 200
 
 
 @app.route(f"{settings.IMAGES_ROOT}/<string:filename>")
@@ -341,9 +366,17 @@ def get_image(filename):
     width = request.args.get("w", "")
     height = request.args.get("h", "")
 
+    try:
+        use_mongo = bool(request.args.get("use_mongo"))
+    except KeyError:
+        use_mongo = False
+    except Exception as e:
+        logger.error(e)
+        use_mongo = False
+
     path = os.path.join(settings.IMAGES_DIR, filename)
 
-    if settings.DISABLE_RESIZE is not True and ((width or height) and (os.path.isfile(path))):
+    if settings.DISABLE_RESIZE is not True and ((width or height) and (os.path.isfile(path) or use_mongo)):
         try:
             width = _get_size_from_string(width)
             height = _get_size_from_string(height)
@@ -353,11 +386,23 @@ def get_image(filename):
                 400,
             )
 
-        filename_without_extension, extension = os.path.splitext(filename)
         dimensions = f"{width}x{height}"
-        resized_filename = filename_without_extension + f"_{dimensions}.{extension}"
+        if not use_mongo:
+            filename_without_extension, extension = os.path.splitext(filename)
+            resized_filename = filename_without_extension + f"_{dimensions}.{extension}"
+            resized_path = os.path.join(settings.CACHE_DIR, resized_filename)
+        else:
+            try:
+                file = fs.get(ObjectId(filename))
+            except Exception as e:
+                logger.error(e)
+                return jsonify(error="File not found"), 404
+            img = file.read()
+            img = PILImage.open(BytesIO(img))
+            img = img.resize((width, height), PILImage.ANTIALIAS)
+            img = img.convert("RGB")
+            return # send file
 
-        resized_path = os.path.join(settings.CACHE_DIR, resized_filename)
 
         if not os.path.isfile(resized_path) and (width or height):
             _clear_imagemagick_temp_files()
@@ -373,17 +418,24 @@ def get_image(filename):
 
 
 @app.route(f"{settings.IMAGES_ROOT}/<string:filename>", methods=["DELETE"])
-def delete_image(filename):
+def delete_image(filename, use_mongo=False):
     """
     The delete_image function deletes an image from the images directory.
     It takes a filename as its only argument and returns nothing.
 
     :param filename: Specify the filename of the image to be deleted
+    :param use_mongo: Specify whether to use mongo or not
     :return: A response object with status code 204
     :doc-author: Trelent
     """
     if getattr(g.get("user"), "role", None) != "admin":
         return jsonify(error="Permission denied"), 403
+    if use_mongo:
+        try:
+            fs.delete(ObjectId(filename))
+        except Exception as e:
+            logger.error(e)
+            return jsonify(error="File not found"), 404
     path = os.path.join(settings.IMAGES_DIR, filename)
     if os.path.isfile(path):
         os.remove(path)
