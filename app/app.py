@@ -15,7 +15,7 @@ import socket
 import filetype
 import timeout_decorator
 from bson import ObjectId
-from flask import Flask, jsonify, request, send_from_directory, Response, g
+from flask import Flask, jsonify, request, send_from_directory, Response, g, send_file
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -392,7 +392,7 @@ def get_image(filename):
             img = PILImage.open(BytesIO(img))
             img = img.resize((width, height), PILImage.ANTIALIAS)
             img = img.convert("RGB")
-            return # send file
+            return send_file(BytesIO(img.tobytes()), mimetype="image/jpeg") # flask will send file as image/jpeg
 
 
         if not os.path.isfile(resized_path) and (width or height):
