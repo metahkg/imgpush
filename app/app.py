@@ -401,7 +401,7 @@ def get_image(filename):
             img = PILImage.open(BytesIO(img))
             img = img.resize((width, height), PILImage.ANTIALIAS)
             img = img.convert("RGB")
-            return send_file(BytesIO(img.tobytes()), mimetype="image/jpeg") # flask will send file as image/jpeg
+            return send_file(BytesIO(img.tobytes()), mimetype=str(file['metadata']['type'])) # flask will send file as image/jpeg
 
 
         if not os.path.isfile(resized_path) and (width or height):
