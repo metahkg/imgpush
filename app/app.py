@@ -345,7 +345,7 @@ def upload_image():
         # gen random file name
         output_filename: str = str(uuid4()).replace('-', '')
         output_file = fs.put(open(tmp_filepath, "rb"), filename=output_filename)
-        output_file = str(output_file)
+        logger.info(f"Uploaded file {output_filename} with ObjectID({str(output_file)}) to GridFS")
         return jsonify(filename=output_filename,
                        url=f"{request.host_url[:-1]}{settings.MONGO_IMAGES_ROOT}/{output_filename}"), 200
 
