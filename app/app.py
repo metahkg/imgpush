@@ -427,8 +427,11 @@ def delete_image(filename):
         return jsonify(error="Permission denied"), 403
     if use_mongo:
         try:
-            fs.delete(ObjectId(filename))
-            return jsonify(success=True), 204
+            if fs.exists({"filename": filename}):
+                fs.delete(fs.find_one({"filename": filename})._id)
+                return jsonify(success=True), 204
+            else:
+                raise Exception("File not found")
         except Exception as e:
             logger.error(e)
             return jsonify(error="File not found"), 404
