@@ -341,6 +341,7 @@ def upload_image():
                        url=f"{request.host_url[:-1]}{settings.IMAGES_ROOT}/{output_filename}"), 200
     else:
         output_file = fs.put(open(tmp_filepath, "rb"))
+        output_file = str(output_file)
         return jsonify(filename=output_file,
                        url=f"{request.host_url[:-1]}{settings.MONGO_IMAGES_ROOT}/{output_file}"), 200
 
