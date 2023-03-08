@@ -25,7 +25,7 @@ from PIL import Image as PILImage
 from werkzeug.middleware.proxy_fix import ProxyFix
 from jwt import verify
 
-from pymongo import MongoClient, database
+from pymongo import MongoClient
 import gridfs
 
 import settings
@@ -38,9 +38,10 @@ app.wsgi_app = ProxyFix(app.wsgi_app)
 
 use_mongo: bool = settings.USE_MONGO
 if use_mongo:
-    client: MongoClient | None = MongoClient(settings.MONGO_URI)
-    db: database | None = client["imgpush"]
-    fs: gridfs.GridFS | None = gridfs.GridFS(db)
+    logger.info("Using mongodb gridfs for storage")
+    client: MongoClient = MongoClient(settings.MONGO_URI)
+    db = client["imgpush"]
+    fs: gridfs.GridFS = gridfs.GridFS(db)
 else:
     logger.info("Using local filesystem for storage")
     client, db, fs = None, None, None
