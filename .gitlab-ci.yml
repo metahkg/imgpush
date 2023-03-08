@@ -73,12 +73,12 @@ test:
   before_script:
     - apk add python3 py3-pip wget
     - pip install poetry
-    - poetry config virtualenvs.create false
+    - poetry config virtualenvs.in-project true
   script:
     - poetry install
     - docker-compose up -d --build
     - wget https://google.com/favicon.ico -O google.png
-    - python test.py google.png
+    - .venv/bin/python test.py google.png
   rules:
      - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
      - if: $CI_COMMIT_TAG
