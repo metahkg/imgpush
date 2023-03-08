@@ -389,7 +389,10 @@ def get_image(filename):
             resized_path = os.path.join(settings.CACHE_DIR, resized_filename)
         else:
             try:
-                file = fs.get(ObjectId(filename))
+                if fs.exists({"filename": filename}) is False:
+                    raise FileNotFoundError
+                fs_id = fs.find_one({"filename": filename})
+                file = fs.get(ObjectId(fs_id))
             except Exception as e:
                 logger.error(e)
                 return jsonify(error="File not found"), 404
@@ -428,10 +431,10 @@ def delete_image(filename):
     if use_mongo:
         try:
             if fs.exists({"filename": filename}):
-                fs.delete(fs.find_one({"filename": filename})._id)
+                fs.delete(fs.find_one({"filename": filename}))
                 return jsonify(success=True), 204
             else:
-                raise Exception("File not found")
+                raise FileNotFoundError
         except Exception as e:
             logger.error(e)
             return jsonify(error="File not found"), 404
