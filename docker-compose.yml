@@ -6,5 +6,5 @@ services:
     build: .
     volumes:
       - ./app:/app
-      - ./images:/images
-      - ./cache:/cache
+      - ./images:/images:Z
+      - ./cache:/cache:Z
