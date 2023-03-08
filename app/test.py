@@ -1,9 +1,10 @@
 import requests
 import sys
+import os
 
 img = open(sys.argv[1], 'rb')
 
-data = requests.post('http://localhost:5000/', files={'file': img})
+data = requests.post(f'http://{os.environ["HOSTNAME"] or "localhost"}:5000', files={'file': img})
 
 url = data.json()['url']
 
