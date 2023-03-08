@@ -4,7 +4,7 @@ COPY ./pyproject.toml ./poetry.lock ./
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-    libmagickwand-dev=8:6.9.11.60+dfsg-1.3+deb11u1 && \
+    libmagickwand-dev && \
     rm -rf /var/lib/{apt,dpkg,cache,log}/
 
 RUN pip install --no-cache-dir poetry==1.3.2 && \
