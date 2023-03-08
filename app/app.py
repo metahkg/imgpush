@@ -309,45 +309,46 @@ def upload_image():
     else:
         return jsonify(error="File is missing!"), 400
 
-    if not use_mongo:
-        output_type = settings.OUTPUT_TYPE or filetype.guess_extension(tmp_filepath)
-        error = None
+    output_type = settings.OUTPUT_TYPE or filetype.guess_extension(tmp_filepath)
+    error = None
 
-        output_filename = os.path.basename(tmp_filepath) + f".{output_type}"
-        output_path = os.path.join(settings.IMAGES_DIR, output_filename)
-
-        try:
-            if os.path.exists(output_path):
-                raise CollisionError
-            with Image(filename=tmp_filepath) as img:
-                img.strip()
-                if output_type not in ["gif"]:
-                    with img.sequence[0] as first_frame, \
-                            Image(image=first_frame) as first_frame_img, \
-                            first_frame_img.convert(output_type) as converted:
-                        converted.save(filename=output_path)
-                else:
-                    with img.convert(output_type) as converted:
-                        converted.save(filename=output_path)
-        except MissingDelegateError:
-            error = "Invalid Filetype"
-        finally:
-            if os.path.exists(tmp_filepath):
-                os.remove(tmp_filepath)
-
-        if error:
-            return jsonify(error=error), 400
-
-        return jsonify(filename=output_filename,
-                       path=f"{settings.IMAGES_ROOT}/{output_filename}",
-                       url=f"{request.host_url[:-1]}{settings.IMAGES_ROOT}/{output_filename}"), 200
-    else:
+    if use_mongo:
         # gen random file name
         output_filename: str = str(uuid4()).replace('-', '')
-        output_file = fs.put(open(tmp_filepath, "rb"), filename=output_filename)
+        output_file = fs.put(open(tmp_filepath, "rb"), filename=output_filename, metadata={"type": output_type})
         logger.info(f"Uploaded file {output_filename} with ObjectID({str(output_file)}) to GridFS")
         return jsonify(filename=output_filename,
                        url=f"{request.host_url[:-1]}{settings.MONGO_IMAGES_ROOT}/{output_filename}"), 200
+
+
+    output_filename = os.path.basename(tmp_filepath) + f".{output_type}"
+    output_path = os.path.join(settings.IMAGES_DIR, output_filename)
+
+    try:
+        if os.path.exists(output_path):
+            raise CollisionError
+        with Image(filename=tmp_filepath) as img:
+            img.strip()
+            if output_type not in ["gif"]:
+                with img.sequence[0] as first_frame, \
+                        Image(image=first_frame) as first_frame_img, \
+                        first_frame_img.convert(output_type) as converted:
+                    converted.save(filename=output_path)
+            else:
+                with img.convert(output_type) as converted:
+                    converted.save(filename=output_path)
+    except MissingDelegateError:
+        error = "Invalid Filetype"
+    finally:
+        if os.path.exists(tmp_filepath):
+            os.remove(tmp_filepath)
+
+    if error:
+        return jsonify(error=error), 400
+
+    return jsonify(filename=output_filename,
+                   path=f"{settings.IMAGES_ROOT}/{output_filename}",
+                   url=f"{request.host_url[:-1]}{settings.IMAGES_ROOT}/{output_filename}"), 200
 
 
 @app.route(f"{settings.IMAGES_ROOT}/<string:filename>")
