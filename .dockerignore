@@ -1,5 +1,6 @@
 .lh/
 venv/
+.venv/
 images/
 cache/
 __pycache__/
