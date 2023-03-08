@@ -25,7 +25,7 @@ from PIL import Image as PILImage
 from werkzeug.middleware.proxy_fix import ProxyFix
 from jwt import verify
 
-from pymongo import MongoClient
+from pymongo import MongoClient, database
 import gridfs
 
 import settings
@@ -36,7 +36,8 @@ logger.setLevel(logging.DEBUG)
 app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app)
 
-db: MongoClient = MongoClient(settings.MONGO_URI)
+client: MongoClient = MongoClient(settings.MONGO_URI)
+db: database = client["imgpush"]
 fs: gridfs.GridFS = gridfs.GridFS(db)
 
 CORS(app, origins=settings.ALLOWED_ORIGINS)
