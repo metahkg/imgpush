@@ -26,6 +26,7 @@ UPLOAD_ROUTE = "/"
 IMAGES_ROOT = ""
 MONGO_URI = ""
 MONGO_IMAGES_ROOT = ""
+USE_MONGO = bool()
 
 VALID_SIZES = []
 

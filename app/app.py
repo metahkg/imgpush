@@ -36,9 +36,14 @@ logger.setLevel(logging.DEBUG)
 app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app)
 
-client: MongoClient = MongoClient(settings.MONGO_URI)
-db: database = client["imgpush"]
-fs: gridfs.GridFS = gridfs.GridFS(db)
+use_mongo: bool = settings.USE_MONGO
+if use_mongo:
+    client: MongoClient | None = MongoClient(settings.MONGO_URI)
+    db: database | None = client["imgpush"]
+    fs: gridfs.GridFS | None = gridfs.GridFS(db)
+else:
+    logger.info("Using local filesystem for storage")
+    client, db, fs = None, None, None
 
 CORS(app, origins=settings.ALLOWED_ORIGINS)
 app.config["MAX_CONTENT_LENGTH"] = settings.MAX_SIZE_MB * 1024 * 1024
@@ -302,13 +307,6 @@ def upload_image():
     else:
         return jsonify(error="File is missing!"), 400
 
-    try:
-        use_mongo = bool(request.json["use_mongo"])
-    except KeyError:
-        use_mongo = False
-    except Exception as e:
-        logger.error(e)
-        use_mongo = False
     if not use_mongo:
         output_type = settings.OUTPUT_TYPE or filetype.guess_extension(tmp_filepath)
         error = None
@@ -367,14 +365,6 @@ def get_image(filename):
     width = request.args.get("w", "")
     height = request.args.get("h", "")
 
-    try:
-        use_mongo = bool(request.args.get("use_mongo"))
-    except KeyError:
-        use_mongo = False
-    except Exception as e:
-        logger.error(e)
-        use_mongo = False
-
     path = os.path.join(settings.IMAGES_DIR, filename)
 
     if settings.DISABLE_RESIZE is not True and ((width or height) and (os.path.isfile(path) or use_mongo)):
@@ -419,13 +409,12 @@ def get_image(filename):
 
 
 @app.route(f"{settings.IMAGES_ROOT}/<string:filename>", methods=["DELETE"])
-def delete_image(filename, use_mongo=False):
+def delete_image(filename):
     """
     The delete_image function deletes an image from the images directory.
     It takes a filename as its only argument and returns nothing.
 
     :param filename: Specify the filename of the image to be deleted
-    :param use_mongo: Specify whether to use mongo or not
     :return: A response object with status code 204
     :doc-author: Trelent
     """
