@@ -369,35 +369,38 @@ def get_image(filename):
 
     path = os.path.join(settings.IMAGES_DIR, filename)
 
-    if settings.DISABLE_RESIZE is not True and ((width or height) and (os.path.isfile(path) or use_mongo)):
-        try:
-            width = _get_size_from_string(width)
-            height = _get_size_from_string(height)
-        except InvalidSize:
-            return (
-                jsonify(error=f"size value must be one of {settings.VALID_SIZES}"),
-                400,
-            )
+    try:
+        width = _get_size_from_string(width)
+        height = _get_size_from_string(height)
+    except InvalidSize:
+        return (
+            jsonify(error=f"size value must be one of {settings.VALID_SIZES}"),
+            400,
+        )
 
+    if use_mongo:
+        try:
+            if fs.exists({"filename": filename}) is False:
+                raise FileNotFoundError
+            fs_id = fs.find_one({"filename": filename})
+            file = fs.get(ObjectId(fs_id))
+        except Exception as e:
+            logger.error(e)
+            return jsonify(error="File not found"), 404
+        if settings.DISABLE_RESIZE is True:
+            return send_file(file, mimetype=file["metadata"]["type"])
+        img = file.read()
+        img = PILImage.open(BytesIO(img))
+        img = img.resize((width, height), PILImage.ANTIALIAS)
+        img = img.convert("RGB")
+        return send_file(BytesIO(img.tobytes()),
+                         mimetype=str(file['metadata']['type']))  # flask will send file as image/jpeg
+
+    if settings.DISABLE_RESIZE is not True and ((width or height) and (os.path.isfile(path))):
         dimensions = f"{width}x{height}"
-        if not use_mongo:
-            filename_without_extension, extension = os.path.splitext(filename)
-            resized_filename = filename_without_extension + f"_{dimensions}.{extension}"
-            resized_path = os.path.join(settings.CACHE_DIR, resized_filename)
-        else:
-            try:
-                if fs.exists({"filename": filename}) is False:
-                    raise FileNotFoundError
-                fs_id = fs.find_one({"filename": filename})
-                file = fs.get(ObjectId(fs_id))
-            except Exception as e:
-                logger.error(e)
-                return jsonify(error="File not found"), 404
-            img = file.read()
-            img = PILImage.open(BytesIO(img))
-            img = img.resize((width, height), PILImage.ANTIALIAS)
-            img = img.convert("RGB")
-            return send_file(BytesIO(img.tobytes()), mimetype=str(file['metadata']['type'])) # flask will send file as image/jpeg
+        filename_without_extension, extension = os.path.splitext(filename)
+        resized_filename = filename_without_extension + f"_{dimensions}.{extension}"
+        resized_path = os.path.join(settings.CACHE_DIR, resized_filename)
 
 
         if not os.path.isfile(resized_path) and (width or height):
