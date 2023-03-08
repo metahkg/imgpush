@@ -10,6 +10,7 @@ services:
       context: ./
     environment:
       MONGO_URI: mongodb://imgpush-mongo
+      USE_MONGO: True
     volumes:
       - ./app:/app
       - ./images:/images:Z
