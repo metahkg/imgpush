@@ -388,7 +388,7 @@ def get_image(filename):
             logger.error(e)
             return jsonify(error="File not found"), 404
         if settings.DISABLE_RESIZE is True:
-            return send_file(file, mimetype=str(file["metadata"]["type"]))
+            return send_file(file.read(), mimetype=str(file["metadata"]["type"]))
         img = file.read()
         img = PILImage.open(BytesIO(img))
         img = img.resize((width, height), PILImage.ANTIALIAS)
