@@ -5,6 +5,5 @@ services:
         - "5000:5000"
     build: .
     volumes:
-      - ./app:/app
       - ./images:/images:Z
       - ./cache:/cache:Z
