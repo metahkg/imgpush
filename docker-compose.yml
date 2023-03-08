@@ -1,10 +1,27 @@
 version: '3.5'
 services:
   imgpush:
+    image: registry.gitlab.com/metahkg/forks/imgpush/${branch:-dev}:latest
+    container_name: imgpush
     ports:
         - "5000:5000"
-    build: .
+    build:
+      dockerfile: Dockerfile
+      context: ./
+    environment:
+      MONGO_URI: mongodb://imgpush-mongo
     volumes:
       - ./app:/app
       - ./images:/images:Z
       - ./cache:/cache:Z
+    networks:
+      - imgpush-network
+  mongo:
+    image: ${MONGO_IMAGE:-mongo:6.0}
+    container_name: imgpush-mongo
+    restart: always
+    networks:
+      - imgpush-network
+networks:
+  imgpush-network:
+    driver: bridge
