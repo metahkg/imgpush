@@ -11,6 +11,7 @@ from urllib.parse import urlparse
 import uuid
 import ipaddress
 import socket
+from uuid import uuid4
 
 import filetype
 import timeout_decorator
@@ -341,10 +342,12 @@ def upload_image():
                        path=f"{settings.IMAGES_ROOT}/{output_filename}",
                        url=f"{request.host_url[:-1]}{settings.IMAGES_ROOT}/{output_filename}"), 200
     else:
-        output_file = fs.put(open(tmp_filepath, "rb"))
+        # gen random file name
+        output_filename: str = str(uuid4()).replace('-', '')
+        output_file = fs.put(open(tmp_filepath, "rb"), filename=output_filename)
         output_file = str(output_file)
-        return jsonify(filename=output_file,
-                       url=f"{request.host_url[:-1]}{settings.MONGO_IMAGES_ROOT}/{output_file}"), 200
+        return jsonify(filename=output_filename,
+                       url=f"{request.host_url[:-1]}{settings.MONGO_IMAGES_ROOT}/{output_filename}"), 200
 
 
 @app.route(f"{settings.IMAGES_ROOT}/<string:filename>")
