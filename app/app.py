@@ -1,36 +1,33 @@
 import datetime
+import glob
+import ipaddress
 import logging
 import mimetypes
-import time
-import glob
 import os
 import random
+import socket
 import string
+import time
 import urllib.request
+import uuid
 from io import BytesIO
 from urllib.parse import urlparse
-import uuid
-import ipaddress
-import socket
-from uuid import uuid4
 
 import filetype
+import gridfs
 import timeout_decorator
 from bson import ObjectId
 from flask import Flask, jsonify, request, send_from_directory, Response, g, send_file
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from pymongo import MongoClient
 from wand.exceptions import MissingDelegateError
 from wand.image import Image
-from PIL import Image as PILImage
 from werkzeug.middleware.proxy_fix import ProxyFix
-from jwt import verify
-
-from pymongo import MongoClient
-import gridfs
 
 import settings
+from jwt import verify
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
