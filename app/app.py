@@ -395,9 +395,8 @@ def get_image(filename):
         if settings.DISABLE_RESIZE is True:
             return send_file(file.read(), mimetype=str(file.metadata["type"]))
         try:
-            # img = _resize_image(file, width, height)
-            1+1
-
+            "img = _resize_image(file, width, height)"
+            # pass by reference????????????
         except Exception as e:
             logger.error(e)
         img = file.read()
