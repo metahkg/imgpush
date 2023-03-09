@@ -1,5 +1,6 @@
 import datetime
 import logging
+import mimetypes
 import time
 import glob
 import os
@@ -191,8 +192,11 @@ def _resize_image(path, width, height):
     :return: An image object
     :doc-author: Trelent
     """
-    with Image(filename=path) as src:
-        img = src.clone()
+    if use_mongo:
+        img = Image(file=path)
+    else:
+        with Image(filename=path) as src:
+            img = src.clone()
 
     current_aspect_ratio = img.width / img.height
 
@@ -314,10 +318,11 @@ def upload_image():
 
     output_filename = os.path.basename(tmp_filepath) + f".{output_type}"
     output_path = os.path.join(settings.IMAGES_DIR, output_filename)
+    mimetype = mimetypes.guess_type(output_path)[0]
 
     if use_mongo:
         # gen random file name
-        output_file = fs.put(open(tmp_filepath, "rb"), filename=output_filename, metadata={"type": output_type})
+        output_file = fs.put(open(tmp_filepath, "rb"), filename=output_filename, metadata={"type": mimetype})
         logger.info(f"Uploaded file {output_filename} with ObjectID({str(output_file)}) to GridFS")
     else:
         try:
@@ -383,18 +388,22 @@ def get_image(filename):
             if fs.exists({"filename": filename}) is False:
                 raise FileNotFoundError
             fs_id = fs.find_one({"filename": filename})
-            file = fs.get(ObjectId(fs_id))
+            file = fs.get(ObjectId(fs_id._id))
         except Exception as e:
             logger.error(e)
             return jsonify(error="File not found"), 404
         if settings.DISABLE_RESIZE is True:
-            return send_file(file.read(), mimetype=str(file["metadata"]["type"]))
+            return send_file(file.read(), mimetype=str(file.metadata["type"]))
+        try:
+            # img = _resize_image(file, width, height)
+            1+1
+
+        except Exception as e:
+            logger.error(e)
         img = file.read()
-        img = PILImage.open(BytesIO(img))
-        img = img.resize((width, height), PILImage.ANTIALIAS)
-        img = img.convert("RGB")
-        return send_file(BytesIO(img.tobytes()),
-                         mimetype=str(file['metadata']['type']))  # flask will send file as image/jpeg
+        logger.info(f"Resized file {filename} to {width}x{height}, type: {file.metadata['type']}")
+        return send_file(BytesIO(img),
+                         mimetype=str(file.metadata['type']))  # flask will send file as image/jpeg
 
     if settings.DISABLE_RESIZE is not True and ((width or height) and (os.path.isfile(path))):
         dimensions = f"{width}x{height}"
