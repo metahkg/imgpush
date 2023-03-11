@@ -25,6 +25,11 @@ from pymongo import MongoClient
 from wand.exceptions import MissingDelegateError
 from wand.image import Image
 from werkzeug.middleware.proxy_fix import ProxyFix
+import numpy as np
+from PIL import Image as PILImage
+import skimage.transform as st
+import flask_resize as fr
+from resizeimage import resizeimage
 
 import settings
 from jwt import verify
@@ -190,7 +195,21 @@ def _resize_image(path, width, height):
     :doc-author: Trelent
     """
     if use_mongo:
-        img = Image(file=path)
+        img = PILImage.open(BytesIO(path))
+        np_img = np.array(img)
+        np_img_ratio = np_img.shape[1] / np_img.shape[0]
+        if not width:
+            width = int(np_img_ratio * height)
+        if not height:
+            height = int(width / np_img_ratio)
+        np_img_desired_ratio = width / height
+        if np_img_desired_ratio > np_img_ratio:
+            np_img_new_height = int(np_img.shape[1] / np_img_desired_ratio)
+            st.resize(np_img, (np_img_new_height, np_img.shape[1]))
+        else:
+            np_img_new_width = int(np_img.shape[0] * np_img_desired_ratio)
+            st.resize(np_img, (np_img.shape[0], np_img_new_width))
+        return resizeimage.resize_cover(img, [width, height]).tobytes()
     else:
         with Image(filename=path) as src:
             img = src.clone()
@@ -391,12 +410,13 @@ def get_image(filename):
             return jsonify(error="File not found"), 404
         if settings.DISABLE_RESIZE is True:
             return send_file(file.read(), mimetype=str(file.metadata["type"]))
-        try:
-            "img = _resize_image(file, width, height)"
-            # pass by reference????????????
-        except Exception as e:
-            logger.error(e)
+        # try:
+        #     # "img = _resize_image(file, width, height)"
+        #     # pass by reference????????????
+        # except Exception as e:
+        #     logger.error(e)
         img = file.read()
+        # img = _resize_image(img, width, height)
         logger.info(f"Resized file {filename} to {width}x{height}, type: {file.metadata['type']}")
         return send_file(BytesIO(img),
                          mimetype=str(file.metadata['type']))  # flask will send file as image/jpeg
