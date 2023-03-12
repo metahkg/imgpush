@@ -8,7 +8,6 @@ RUN apt-get update && \
     rm -rf /var/lib/{apt,dpkg,cache,log}/
 
 RUN pip install --no-cache-dir poetry==1.4.0 && \
-    pip install numpy==1.24.2 --no-binary :all: &&  \
     poetry config virtualenvs.create false && \
     poetry install --no-dev --no-interaction && \
     rm -rf ~/.cache/pypoetry/{cache,artifacts}
