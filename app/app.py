@@ -239,7 +239,7 @@ def _resize_image(path, width, height):
             int((img.width / 2) - (newwidth / 2)), 0, width=newwidth, height=img.height,
         )
 
-    @timeout_decorator.timeout(settings.RESIZE_TIMEOUT)
+    @timeout_decorator.timeout(settings.RESIZE_TIMEOUT, use_signals=False)
     def resize(img, width, height):
         img.sample(width, height)
 
