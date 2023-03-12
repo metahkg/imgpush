@@ -35,10 +35,11 @@ import settings
 from jwt import verify
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app)
+app.logger.setLevel(logging.INFO)
 
 use_mongo: bool = settings.USE_MONGO
 if use_mongo:
