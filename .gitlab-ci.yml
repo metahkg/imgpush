@@ -72,6 +72,7 @@ test:
   script:
     - cp example.env .env
     - docker-compose up -d --build
+    - docker-compose logs imgpush
     - docker-compose exec -u root -it imgpush sh -c "chown -R python:python /images /cache && python imgpush/test.py"
   rules:
      - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
