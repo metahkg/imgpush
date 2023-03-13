@@ -78,6 +78,7 @@ test:
   script:
     - poetry install
     - cp example.env .env
+    - mkdir images cache
     - echo "IMAGES_DIR=$PWD/images/" >> .env
     - echo "CACHE_DIR=$PWD/cache/" >> .env
     - echo "MONGO_URI=mongodb://db" >> .env
