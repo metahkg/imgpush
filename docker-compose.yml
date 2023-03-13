@@ -1,9 +1,52 @@
 version: '3.5'
 services:
   imgpush:
+    image: imgpush
     ports:
-        - "5000:5000"
-    build: .
+      - ${PORT:-5000}:5000
+    build:
+      dockerfile: Dockerfile
+      context: ./
+    environment:
+      IMAGES_DIR: ${IMAGES_DIR}
+      CACHE_DIR: ${CACHE_DIR}
+      OUTPUT_TYPE: ${OUTPUT_TYPE}
+      MAX_UPLOADS_PER_DAY: ${MAX_UPLOADS_PER_DAY}
+      MAX_UPLOADS_PER_HOUR: ${MAX_UPLOADS_PER_HOUR}
+      MAX_UPLOADS_PER_MINUTE: ${MAX_UPLOADS_PER_MINUTE}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
+      NAME_STRATEGY: ${NAME_STRATEGY}
+      MAX_TMP_FILE_AGE: ${MAX_TMP_FILE_AGE}
+      RESIZE_TIMEOUT: ${RESIZE_TIMEOUT}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
+      JWT_SECRET: ${JWT_SECRET}
+      UPLOAD_REQUIRE_AUTH: ${UPLOAD_REQUIRE_AUTH}
+      GET_REQUIRE_AUTH: ${GET_REQUIRE_AUTH}
+      DISABLE_RESIZE: ${DISABLE_RESIZE}
+      DISABLE_URL_UPLOADS: ${DISABLE_URL_UPLOADS}
+      DISABLE_UPLOAD_FORM: ${DISABLE_UPLOAD_FORM}
+      UPLOAD_ROUTE: ${UPLOAD_ROUTE}
+      IMAGES_ROOT: ${IMAGES_ROOT}
+      VALID_SIZES: ${VALID_SIZES}
+      MAX_SIZE_MB: ${MAX_SIZE_MB}
+      USE_MONGO: ${USE_MONGO}
+      MONGO_URI: mongodb://imgpush-mongo
     volumes:
       - ./images:/images:Z
       - ./cache:/cache:Z
+    networks:
+      - imgpush-network
+  mongo:
+    image: ${MONGO_IMAGE:-mongo:6.0}
+    container_name: imgpush-mongo
+    ports:
+      - ${MONGO_PORT:-27017}:27017
+    restart: unless-stopped
+    networks:
+      - imgpush-network
+    volumes:
+      - ./data:/data/db
+networks:
+  imgpush-network:
+    driver: bridge
