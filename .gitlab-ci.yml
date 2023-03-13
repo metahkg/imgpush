@@ -81,7 +81,8 @@ test:
     - echo "IMAGES_DIR=$PWD/images/" >> .env
     - echo "CACHE_DIR=$PWD/cache/" >> .env
     - echo "MONGO_URI=mongodb://db" >> .env
-    - nohup python imgpush/app.py
+    - nohup python imgpush/app.py > /dev/null 2>&1 &
+    - sleep 5
     - python imgpush/test.py
   rules:
      - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
