@@ -66,14 +66,23 @@ build:
 
 test:
   stage: test
-  image: docker:latest
+  image: python:3.10-alpine
   services:
-    - docker:dind
+    - name: mongo
+      alias: db
+      command: ["mongod", "--bind_ip_all"]
+  before_script:
+    - apk add nohup
+    - pip install poetry
+    - poetry config virtualenvs.create false
   script:
+    - poetry install
     - cp example.env .env
-    - docker-compose up -d --build
-    - docker-compose logs imgpush
-    - docker-compose exec -u root -it imgpush sh -c "chown -R python:python /images /cache && python imgpush/test.py"
+    - echo "IMAGES_DIR=$PWD/images/" >> .env
+    - echo "CACHE_DIR=$PWD/cache/" >> .env
+    - echo "MONGO_URI=mongodb://db" >> .env
+    - nohup python imgpush/app.py
+    - python imgpush/test.py
   rules:
      - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
      - if: $CI_COMMIT_TAG
