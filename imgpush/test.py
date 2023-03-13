@@ -15,11 +15,11 @@ hostname = os.getenv("HOSTNAME") or "localhost"
 port = os.getenv("PORT") or "5000"
 upload_route = os.getenv("UPLOAD_ROUTE") or "/"
 
-
-data = requests.post(f'http://{hostname}:{port}/{upload_route}', files={'file': img})
+print(f'http://localhost:{port}{upload_route}')
+data = requests.post(f'http://localhost:{port}{upload_route}', files={'file': img})
 
 if data.status_code == 200:
-    print("Upload and Download OK")
+    print("Upload OK")
 else:
     raise Exception(data.text)
 
@@ -29,6 +29,11 @@ url = data.json()['url']
 
 print(f"url: {url}")
 data = requests.get(url)
+
+if data.status_code == 200:
+    print("Download OK")
+else:
+    raise Exception(data.text)
 
 resized_url = url + "?w=1000&h=1000"
 print(f"resized url: {resized_url}")
