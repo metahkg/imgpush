@@ -1,30 +1,49 @@
-import datetime
-import time
-import glob
+import sys
 import os
-import random
-import string
-import urllib.request
-from urllib.parse import urlparse
-import uuid
-import ipaddress
-import socket
+myDir = os.getcwd()
+sys.path.append(myDir)
 
+import ipaddress
+import logging
+import socket
+import urllib.request
+from io import BytesIO
+from urllib.parse import urlparse
 import filetype
-import timeout_decorator
-from flask import Flask, jsonify, request, send_from_directory, Response, g
+import gridfs
+from bson import ObjectId
+from flask import Flask, jsonify, request, send_from_directory, Response, g, send_file
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from wand.exceptions import MissingDelegateError
-from wand.image import Image
+from pymongo import MongoClient
 from werkzeug.middleware.proxy_fix import ProxyFix
-from jwt import verify
-
+from PIL import Image, ImageOps, UnidentifiedImageError
+from imgpush.lib.utils import pil_to_file, pil_to_binary, get_size_from_string
+from imgpush.lib.resize_image import resize_image
+from imgpush.lib.remove_metadata import remove_metadata
+from imgpush.lib.filename import get_random_filename
+from imgpush.lib.errors import CollisionError, InvalidSize
+from imgpush.lib.convert_format import convert_format_type, convert_image
 import settings
+from imgpush.lib.jwt import verify
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app)
+app.logger.setLevel(logging.INFO)
+
+use_mongo: bool = settings.USE_MONGO
+if use_mongo:
+    logger.info("Using mongodb gridfs for storage")
+    client: MongoClient = MongoClient(settings.MONGO_URI)
+    db = client["imgpush"]
+    fs: gridfs.GridFS = gridfs.GridFS(db)
+else:
+    logger.info("Using local filesystem for storage")
+    client, db, fs = None, None, None
 
 CORS(app, origins=settings.ALLOWED_ORIGINS)
 app.config["MAX_CONTENT_LENGTH"] = settings.MAX_SIZE_MB * 1024 * 1024
@@ -71,143 +90,6 @@ def after_request(resp):
         del resp.headers["X-Sendfile"]
     resp.headers["Referrer-Policy"] = "no-referrer-when-downgrade"
     return resp
-
-
-class InvalidSize(Exception):
-    """Raised when the size of the image is invalid."""
-
-
-class CollisionError(Exception):
-    """Raised when the filename is already present."""
-
-
-def _get_size_from_string(size):
-    """
-    The _get_size_from_string function takes a string and returns an integer.
-    If the string is not a valid size, it returns an empty string.
-
-    :param size: Determine the size of the image to be returned
-    :return: The size as an integer or &quot;&quot;
-    :doc-author: Trelent
-    """
-    try:
-        size = int(size)
-        if len(settings.VALID_SIZES) and size not in settings.VALID_SIZES:
-            raise InvalidSize
-    except ValueError:
-        size = ""
-    return size
-
-
-def _clear_imagemagick_temp_files():
-    """
-    A bit of a hacky solution to prevent exhausting the cache ImageMagick uses on disk.
-    It works by checking for imagemagick cache files under /tmp/
-    and removes those that are older than settings.MAX_TMP_FILE_AGE in seconds.
-    """
-    imagemagick_temp_files = glob.glob("/tmp/magick-*")
-    for filepath in imagemagick_temp_files:
-        modified = datetime.datetime.strptime(
-            time.ctime(os.path.getmtime(filepath)), "%a %b %d %H:%M:%S %Y",
-        )
-        diff = datetime.datetime.now() - modified
-        seconds = diff.seconds
-        if seconds > settings.MAX_TMP_FILE_AGE:
-            os.remove(filepath)
-
-
-def _get_random_filename():
-    """
-    The _get_random_filename function generates a random filename for an image.
-    It does this by generating a random string of length settings.RANDOM_STRING_LENGTH,
-    and then appending the appropriate file extension based on the MIME type of the image.
-    If that filename already exists in IMAGES_DIR, it will generate another one and check if it exists again.
-
-    :return: A random string of length 8
-    :doc-author: Trelent
-    """
-    random_string = _generate_random_filename()
-    if settings.NAME_STRATEGY == "randomstr":
-        file_exists = len(glob.glob(f"{settings.IMAGES_DIR}/{random_string}.*")) > 0
-        if file_exists:
-            return _get_random_filename()
-    return random_string
-
-
-def _generate_random_filename():
-    """
-    The _generate_random_filename function generates a random filename for the uploaded file.
-    The function is called by the upload_file() function, which uses it to generate a filename
-    for each uploaded file.
-    The _generate_random_filename() function accepts no arguments and returns a string containing
-    the randomly generated filename.
-
-    :return: A random string of length 6
-    :doc-author: Trelent
-    """
-    if settings.NAME_STRATEGY == "uuidv4":
-        return str(uuid.uuid4())
-    if settings.NAME_STRATEGY == "randomstr":
-        return "".join(
-            random.choices(
-                string.ascii_lowercase + string.digits + string.ascii_uppercase, k=6
-            )
-        )
-    return None
-
-
-def _resize_image(path, width, height):
-    """
-    The _resize_image function takes a path to an image and resizes it to the specified
-    width and height.
-    If either width or height is not specified, the function will resize the image so that
-    its current aspect ratio matches that of
-    the desired dimensions. If both are not specified, then no resizing occurs.
-
-    :param path: Specify the image to be resized
-    :param width: Set the width of the image
-    :param height: Resize the image to a specific height
-    :return: An image object
-    :doc-author: Trelent
-    """
-    with Image(filename=path) as src:
-        img = src.clone()
-
-    current_aspect_ratio = img.width / img.height
-
-    if not width:
-        width = int(current_aspect_ratio * height)
-
-    if not height:
-        height = int(width / current_aspect_ratio)
-
-    desired_aspect_ratio = width / height
-
-    # Crop the image to fit the desired AR
-    if desired_aspect_ratio > current_aspect_ratio:
-        newheight = int(img.width / desired_aspect_ratio)
-        img.crop(
-            0,
-            int((img.height / 2) - (newheight / 2)),
-            width=img.width,
-            height=newheight,
-        )
-    else:
-        newwidth = int(img.height * desired_aspect_ratio)
-        img.crop(
-            int((img.width / 2) - (newwidth / 2)), 0, width=newwidth, height=img.height,
-        )
-
-    @timeout_decorator.timeout(settings.RESIZE_TIMEOUT)
-    def resize(img, width, height):
-        img.sample(width, height)
-
-    try:
-        resize(img, width, height)
-    except timeout_decorator.TimeoutError:
-        pass
-
-    return img
 
 
 @app.route("/", methods=["GET"])
@@ -265,9 +147,8 @@ def upload_image():
         and not g.get("user")
     ):
         return jsonify(error="Unauthorized"), 401
-    _clear_imagemagick_temp_files()
 
-    random_string = _get_random_filename()
+    random_string = get_random_filename()
     tmp_filepath = os.path.join("/tmp/", random_string)
 
     if "file" in request.files:
@@ -282,7 +163,10 @@ def upload_image():
                 return jsonify(error="Failed to resolve host"), 400
             if ip.is_private or ip.is_loopback or ip.is_link_local:
                 return jsonify(error="Refusing to connect to local or private address"), 400
-            urllib.request.urlretrieve(request.json["url"], tmp_filepath)
+            try:
+                urllib.request.urlretrieve(request.json["url"], tmp_filepath)
+            except:
+                return jsonify(error="Failed to download file"), 500
         else:
             return jsonify(error="Invalid URL"), 400
     else:
@@ -297,17 +181,17 @@ def upload_image():
     try:
         if os.path.exists(output_path):
             raise CollisionError
-        with Image(filename=tmp_filepath) as img:
-            img.strip()
-            if output_type not in ["gif"]:
-                with img.sequence[0] as first_frame, \
-                        Image(image=first_frame) as first_frame_img, \
-                        first_frame_img.convert(output_type) as converted:
-                    converted.save(filename=output_path)
-            else:
-                with img.convert(output_type) as converted:
-                    converted.save(filename=output_path)
-    except MissingDelegateError:
+        with Image.open(tmp_filepath) as img:
+            img = remove_metadata(img)
+            if use_mongo:
+                output_file = fs.put(pil_to_binary(img, output_type),
+                                     filename=output_filename, metadata={"type": output_type})
+                logger.info(f"Uploaded file {output_filename} with ObjectID({str(output_file)}) to GridFS")
+
+            format = convert_format_type(output_type)
+            with convert_image(img, format) as converted:
+                converted.save(output_path, format=format)
+    except UnidentifiedImageError:
         error = "Invalid Filetype"
     finally:
         if os.path.exists(tmp_filepath):
@@ -343,28 +227,62 @@ def get_image(filename):
 
     path = os.path.join(settings.IMAGES_DIR, filename)
 
-    if settings.DISABLE_RESIZE is not True and ((width or height) and (os.path.isfile(path))):
+    try:
+        width = get_size_from_string(width)
+        height = get_size_from_string(height)
+    except InvalidSize:
+        return (
+            jsonify(error=f"size value must be one of {settings.VALID_SIZES}"),
+            400,
+        )
+
+    if use_mongo:
         try:
-            width = _get_size_from_string(width)
-            height = _get_size_from_string(height)
-        except InvalidSize:
-            return (
-                jsonify(error=f"size value must be one of {settings.VALID_SIZES}"),
-                400,
-            )
+            if fs.exists({"filename": filename}) is False:
+                raise FileNotFoundError
+            fs_id = fs.find_one({"filename": filename})
+            file = fs.get(ObjectId(fs_id._id))
+        except Exception as e:
+            logger.error(e)
+            return jsonify(error="File not found"), 404
 
-        filename_without_extension, extension = os.path.splitext(filename)
+        if settings.DISABLE_RESIZE is True or not (width or height):
+            return send_file(BytesIO(file.read()), mimetype=str(file.metadata['type']))
+
         dimensions = f"{width}x{height}"
-        resized_filename = filename_without_extension + f"_{dimensions}.{extension}"
+        filename_without_extension, extension = os.path.splitext(filename)
+        resized_filename = filename_without_extension + f"_{dimensions}{extension}"
+        if fs.exists({"filename": resized_filename}) is False:
+            try:
+                resized_image = resize_image(Image.open(file), width, height)
+                fs.put(pil_to_binary(resized_image, convert_format_type(extension[1:])), filename=resized_filename)
+                resized_image = pil_to_file(resized_image, convert_format_type(extension[1:]))
+                logger.info(f"Resized file {filename} to {width}x{height}, type: {file.metadata['type']}")
+            except Exception as e:
+                logger.error(e)
+                return jsonify(error="Failed to resize image"), 500
+        else:
+            fs_id = fs.find_one({"filename": resized_filename})
+            resized_image = BytesIO(fs.get(ObjectId(fs_id._id)).read())
 
+        return send_file(resized_image, file.metadata['type'])
+
+    if settings.DISABLE_RESIZE is not True and ((width or height) and (os.path.isfile(path))):
+        dimensions = f"{width}x{height}"
+        filename_without_extension, extension = os.path.splitext(filename)
+        resized_filename = filename_without_extension + f"_{dimensions}{extension}"
         resized_path = os.path.join(settings.CACHE_DIR, resized_filename)
 
         if not os.path.isfile(resized_path) and (width or height):
-            _clear_imagemagick_temp_files()
-            resized_image = _resize_image(path, width, height)
-            resized_image.strip()
-            resized_image.save(filename=resized_path)
-            resized_image.close()
+            try:
+                resized_image = resize_image(Image.open(path), width, height)
+                resized_image = ImageOps.exif_transpose(resized_image)
+                resized_image.save(resized_path, format=convert_format_type(extension[1:]))
+                resized_image.close()
+                logger.info(f"Resized file {filename} to {width}x{height}, type: {file.metadata['type']}")
+            except Exception as e:
+                logger.error(e)
+                return jsonify(error="Failed to resize image"), 500
         return send_from_directory(settings.CACHE_DIR, resized_filename)
 
     return send_from_directory(settings.IMAGES_DIR, filename)
@@ -384,6 +302,16 @@ def delete_image(filename):
     """
     if getattr(g.get("user"), "role", None) != "admin":
         return jsonify(error="Permission denied"), 403
+    if use_mongo:
+        try:
+            if fs.exists({"filename": filename}):
+                fs.delete(fs.find_one({"filename": filename}))
+                return jsonify(success=True), 204
+            else:
+                raise FileNotFoundError
+        except Exception as e:
+            logger.error(e)
+            return jsonify(error="File not found"), 404
     path = os.path.join(settings.IMAGES_DIR, filename)
     if os.path.isfile(path):
         os.remove(path)
@@ -394,4 +322,4 @@ def delete_image(filename):
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=settings.PORT, threaded=True)
+    app.run(host="0.0.0.0", port=settings.PORT, threaded=True, debug=settings.DEBUG)
