@@ -21,6 +21,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from PIL import Image, ImageOps, UnidentifiedImageError
 from imgpush.lib.utils import pil_to_file, pil_to_binary, get_size_from_string
 from imgpush.lib.resize_image import resize_image
+from imgpush.lib.remove_metadata import remove_metadata
 from imgpush.lib.filename import get_random_filename
 from imgpush.lib.errors import CollisionError, InvalidSize
 from imgpush.lib.convert_format import convert_format_type, convert_image
@@ -181,7 +182,7 @@ def upload_image():
         if os.path.exists(output_path):
             raise CollisionError
         with Image.open(tmp_filepath) as img:
-            img = ImageOps.exif_transpose(img)
+            img = remove_metadata(img)
             if use_mongo:
                 output_file = fs.put(pil_to_binary(img, output_type),
                                      filename=output_filename, metadata={"type": output_type})
