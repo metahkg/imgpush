@@ -72,7 +72,7 @@ test:
       alias: db
       command: ["mongod", "--bind_ip_all"]
   before_script:
-    - apk add nohup
+    - apk add coreutils
     - pip install poetry
     - poetry config virtualenvs.create false
   script:
