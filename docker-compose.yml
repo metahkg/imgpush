@@ -31,7 +31,7 @@ services:
       VALID_SIZES: ${VALID_SIZES}
       MAX_SIZE_MB: ${MAX_SIZE_MB}
       USE_MONGO: ${USE_MONGO}
-      MONGO_URI: ${MONGO_URI}
+      MONGO_URI: mongodb://imgpush-mongo
     volumes:
       - ./images:/images:Z
       - ./cache:/cache:Z
