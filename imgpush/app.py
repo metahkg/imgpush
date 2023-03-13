@@ -1,6 +1,5 @@
 import sys
 import os
-
 myDir = os.getcwd()
 sys.path.append(myDir)
 
@@ -24,6 +23,7 @@ from imgpush.lib.utils import pil_to_file, pil_to_binary, get_size_from_string
 from imgpush.lib.resize_image import resize_image
 from imgpush.lib.filename import get_random_filename
 from imgpush.lib.errors import CollisionError, InvalidSize
+from imgpush.lib.convert_format import convert_format_type, convert_image
 import settings
 from imgpush.lib.jwt import verify
 
@@ -186,8 +186,10 @@ def upload_image():
                 output_file = fs.put(pil_to_binary(img, output_type),
                                      filename=output_filename, metadata={"type": output_type})
                 logger.info(f"Uploaded file {output_filename} with ObjectID({str(output_file)}) to GridFS")
-            with img.convert("RGBA") as converted:
-                converted.save(output_path, format=output_type)
+
+            format = convert_format_type(output_type)
+            with convert_image(img, format) as converted:
+                converted.save(output_path, format=format)
     except UnidentifiedImageError:
         error = "Invalid Filetype"
     finally:
@@ -252,8 +254,8 @@ def get_image(filename):
         if fs.exists({"filename": resized_filename}) is False:
             try:
                 resized_image = resize_image(Image.open(file), width, height)
-                fs.put(pil_to_binary(resized_image, extension[1:]), filename=resized_filename)
-                resized_image = pil_to_file(resized_image, extension[1:])
+                fs.put(pil_to_binary(resized_image, convert_format_type(extension[1:])), filename=resized_filename)
+                resized_image = pil_to_file(resized_image, convert_format_type(extension[1:]))
                 logger.info(f"Resized file {filename} to {width}x{height}, type: {file.metadata['type']}")
             except Exception as e:
                 logger.error(e)
@@ -274,7 +276,7 @@ def get_image(filename):
             try:
                 resized_image = resize_image(Image.open(path), width, height)
                 resized_image = ImageOps.exif_transpose(resized_image)
-                resized_image.save(resized_path, format=extension[1:])
+                resized_image.save(resized_path, format=convert_format_type(extension[1:]))
                 resized_image.close()
                 logger.info(f"Resized file {filename} to {width}x{height}, type: {file.metadata['type']}")
             except Exception as e:
@@ -319,4 +321,4 @@ def delete_image(filename):
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=settings.PORT, threaded=True)
+    app.run(host="0.0.0.0", port=settings.PORT, threaded=True, debug=settings.DEBUG)
