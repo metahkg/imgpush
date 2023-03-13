@@ -18,4 +18,4 @@ RUN adduser -D python && \
 
 USER python
 
-CMD ["sh", "-c", "python imgpush/app.py"]
+CMD python imgpush/app.py
