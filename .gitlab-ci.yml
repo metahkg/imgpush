@@ -75,6 +75,7 @@ test:
     - poetry config virtualenvs.in-project true
   script:
     - poetry install
+    - cp example.env .env
     - docker-compose up -d --build
     - docker-compose exec -u root -it imgpush sh -c "chown -R python:python /images /cache && python imgpush/test.py"
   rules:
