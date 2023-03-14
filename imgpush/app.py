@@ -1,8 +1,6 @@
+from datetime import datetime
 import sys
 import os
-myDir = os.getcwd()
-sys.path.append(myDir)
-
 import ipaddress
 import logging
 import socket
@@ -10,23 +8,29 @@ import urllib.request
 from io import BytesIO
 from urllib.parse import urlparse
 import filetype
-import gridfs
 from bson import ObjectId
 from flask import Flask, jsonify, request, send_from_directory, Response, g, send_file
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from pymongo import MongoClient
 from werkzeug.middleware.proxy_fix import ProxyFix
 from PIL import Image, ImageOps, UnidentifiedImageError
+from flask_apscheduler import APScheduler
+
+# add the parent directory to the path
+myDir = os.getcwd()
+sys.path.append(myDir)
+
+import imgpush.settings as settings
 from imgpush.lib.utils import pil_to_file, pil_to_binary, get_size_from_string
 from imgpush.lib.resize_image import resize_image
 from imgpush.lib.remove_metadata import remove_metadata
 from imgpush.lib.filename import get_random_filename
 from imgpush.lib.errors import CollisionError, InvalidSize
 from imgpush.lib.convert_format import convert_format_type, convert_image
-import settings
+from imgpush.lib.autodel_cache import autodel_cache
 from imgpush.lib.jwt import verify
+from imgpush.lib.db import fs, cachefs
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -35,22 +39,31 @@ app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app)
 app.logger.setLevel(logging.INFO)
 
+# initialize scheduler
+scheduler = APScheduler()
+
+# add configuration values
+app.config['SCHEDULER_API_ENABLED'] = True
+
+@scheduler.task('interval', id='autodel_cache', seconds=60)
+def job1():
+    autodel_cache()
+
+# add the scheduler to the app
+scheduler.init_app(app)
+scheduler.start()
+
 use_mongo: bool = settings.USE_MONGO
 if use_mongo:
     logger.info("Using mongodb gridfs for storage")
-    client: MongoClient = MongoClient(settings.MONGO_URI)
-    db = client["imgpush"]
-    fs: gridfs.GridFS = gridfs.GridFS(db)
 else:
     logger.info("Using local filesystem for storage")
-    client, db, fs = None, None, None
 
 CORS(app, origins=settings.ALLOWED_ORIGINS)
 app.config["MAX_CONTENT_LENGTH"] = settings.MAX_SIZE_MB * 1024 * 1024
 limiter = Limiter(app, default_limits=[])
 
 app.USE_X_SENDFILE = True
-
 
 @app.before_request
 def before_request():
@@ -185,7 +198,7 @@ def upload_image():
             img = remove_metadata(img)
             if use_mongo:
                 output_file = fs.put(pil_to_binary(img, output_type),
-                                     filename=output_filename, metadata={"type": output_type})
+                                     filename=output_filename, metadata={"type": output_type, "uploadDate": datetime.now()})
                 logger.info(f"Uploaded file {output_filename} with ObjectID({str(output_file)}) to GridFS")
 
             format = convert_format_type(output_type)
@@ -252,18 +265,18 @@ def get_image(filename):
         dimensions = f"{width}x{height}"
         filename_without_extension, extension = os.path.splitext(filename)
         resized_filename = filename_without_extension + f"_{dimensions}{extension}"
-        if fs.exists({"filename": resized_filename}) is False:
+        if cachefs.exists({"filename": resized_filename}) is False:
             try:
                 resized_image = resize_image(Image.open(file), width, height)
-                fs.put(pil_to_binary(resized_image, convert_format_type(extension[1:])), filename=resized_filename)
+                cachefs.put(pil_to_binary(resized_image, convert_format_type(extension[1:])), filename=resized_filename, metadata={"type": extension[1:], "uploadDate": datetime.now()})
                 resized_image = pil_to_file(resized_image, convert_format_type(extension[1:]))
                 logger.info(f"Resized file {filename} to {width}x{height}, type: {file.metadata['type']}")
             except Exception as e:
                 logger.error(e)
                 return jsonify(error="Failed to resize image"), 500
         else:
-            fs_id = fs.find_one({"filename": resized_filename})
-            resized_image = BytesIO(fs.get(ObjectId(fs_id._id)).read())
+            fs_id = cachefs.find_one({"filename": resized_filename})
+            resized_image = BytesIO(cachefs.get(ObjectId(fs_id._id)).read())
 
         return send_file(resized_image, file.metadata['type'])
 
