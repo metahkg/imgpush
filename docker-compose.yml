@@ -32,7 +32,10 @@ services:
       MAX_SIZE_MB: ${MAX_SIZE_MB}
       USE_MONGO: ${USE_MONGO}
       MONGO_URI: mongodb://imgpush-mongo
+      DEBUG: ${DEBUG}
+      TZ: ${TZ:-UTC}
     volumes:
+      - ./imgpush:/app/imgpush
       - ./images:/images:Z
       - ./cache:/cache:Z
     networks:
