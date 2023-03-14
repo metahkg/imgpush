@@ -1,3 +1,4 @@
+import ast
 import os
 from dotenv import load_dotenv
 
@@ -37,7 +38,7 @@ for variable in [item for item in globals() if not item.startswith("__")]:
     env_var = os.getenv(variable, NULL).strip()
     if env_var is not NULL:
         try:
-            env_var = eval(env_var)
+            env_var = ast.literal_eval(env_var)
         except Exception:
             pass
     globals()[variable] = env_var if env_var is not NULL else globals()[variable]
