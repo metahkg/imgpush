@@ -59,7 +59,7 @@ def get_size_from_string(size):
     """
     try:
         size = int(size)
-        if len(settings.VALID_SIZES) and size not in settings.VALID_SIZES:
+        if settings.VALID_SIZES and size not in settings.VALID_SIZES:
             raise InvalidSize
     except ValueError:
         size = ""
