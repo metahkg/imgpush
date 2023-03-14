@@ -17,6 +17,7 @@ timeout-decorator = "^0.5.0"
 python-dotenv = "^0.21.1"
 pymongo = {extras = ["srv"], version = "^4.3.3"}
 pillow = "^9.4.0"
+flask-apscheduler = "^1.12.4"
 
 [tool.poetry.dev-dependencies]
 autopep8 = "^2.0.1"
