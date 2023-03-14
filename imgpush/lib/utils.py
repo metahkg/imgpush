@@ -7,7 +7,6 @@ from PIL import Image
 
 def pil_to_file(img: Image, format: str, fps: Optional[int] = None) -> BytesIO:
     outfile = BytesIO()
-    print("format: ", format)
     if format.upper() == "GIF":
         frames = []
         try:
