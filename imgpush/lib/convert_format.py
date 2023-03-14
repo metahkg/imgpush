@@ -10,7 +10,7 @@ def convert_format_type(format: str, default_format: str = settings.OUTPUT_TYPE)
     if format not in acceptable_formats:
         return default_format
 
-    if format == 'JPG' or format == 'JIFF':
+    if format in ('JPG', 'JIFF'):
         return "JPEG"
 
     return format
