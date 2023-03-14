@@ -6,13 +6,13 @@ import mimetypes
 
 client: MongoClient = MongoClient(settings.MONGO_URI)
 db = client["imgpush"]
-fs: gridfs.GridFS = gridfs.GridFS(db)
+fs: gridfs.GridFS = gridfs.GridFS(db, "images")
 
 
 def migrate():
-    for file in os.listdir("images"):
+    for file in os.listdir(settings.IMAGES_DIR):
         mimetype = mimetypes.guess_type(file)[0]
-        fs.put(open(f"images/{file}", "rb"), filename=file, metadata={"type": mimetype})
+        fs.put(open(f"{settings.IMAGES_DIR}{file}", "rb"), filename=file, metadata={"type": mimetype})
     return None
 
 
