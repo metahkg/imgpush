@@ -8,9 +8,9 @@ RUN apk update && apk add --no-cache build-base libffi-dev
 COPY ./pyproject.toml ./poetry.lock ./
 
 # Install poetry and project dependencies
-RUN pip install --no-cache-dir poetry==1.2.0 && \
+RUN pip install --no-cache-dir poetry==1.4.0 && \
     poetry config virtualenvs.create false && \
-    poetry install --no-dev --no-root --no-interaction && \
+    poetry install --only main --no-interaction && \
     rm -rf ~/.cache/pypoetry/{cache,artifacts}
 
 # Stage 2: Runtime environment
