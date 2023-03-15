@@ -1,6 +1,8 @@
 # Stage 1: Build environment
 FROM python:3.10-alpine as builder
 
+WORKDIR /app
+
 # Install build dependencies
 RUN apk update && apk add --no-cache build-base libffi-dev
 
