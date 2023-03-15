@@ -1,5 +1,4 @@
-# Stage 1: Build environment
-FROM python:3.10-alpine as builder
+FROM python:3.10-alpine as build
 
 # Install build dependencies
 RUN apk update && apk add --no-cache build-base libffi-dev
@@ -8,19 +7,20 @@ RUN apk update && apk add --no-cache build-base libffi-dev
 COPY ./pyproject.toml ./poetry.lock ./
 
 # Install poetry and project dependencies
-RUN pip install --no-cache-dir poetry==1.4.0 && \
-    poetry config virtualenvs.create false && \
-    poetry install --only main --no-interaction && \
-    rm -rf ~/.cache/pypoetry/{cache,artifacts}
+RUN pip install --no-cache-dir poetry==1.4.0
 
-# Stage 2: Runtime environment
+RUN poetry config virtualenvs.create false && \
+    poetry install --only main --no-interaction
+
+RUN pip uninstall -y poetry
+
 FROM python:3.10-alpine
 
 WORKDIR /app
 
-# Copy application code and dependencies from builder stage
-COPY --from=builder /usr/local/lib/python3.10/site-packages/ /usr/local/lib/python3.10/site-packages/
-COPY --from=builder /usr/local/bin/ /usr/local/bin/
+# Copy application code and dependencies from build stage
+COPY --from=build /usr/local/lib/python3.10/site-packages/ /usr/local/lib/python3.10/site-packages/
+COPY --from=build /usr/local/bin/ /usr/local/bin/
 
 COPY ./imgpush ./imgpush
 
