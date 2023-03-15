@@ -200,10 +200,10 @@ def upload_image():
                 output_file = fs.put(pil_to_binary(img, output_type),
                                      filename=output_filename, metadata={"type": output_type, "uploadDate": datetime.now()})
                 logger.info(f"Uploaded file {output_filename} with ObjectID({str(output_file)}) to GridFS")
-
-            format = convert_format_type(output_type)
-            with convert_image(img, format) as converted:
-                converted.save(output_path, format=format)
+            else:
+                format = convert_format_type(output_type)
+                with convert_image(img, format) as converted:
+                    converted.save(output_path, format=format)
     except UnidentifiedImageError:
         error = "Invalid Filetype"
     finally:
