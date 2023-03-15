@@ -31,6 +31,8 @@ from imgpush.lib.convert_format import convert_format_type, convert_image
 from imgpush.lib.autodel_cache import autodel_cache
 from imgpush.lib.jwt import verify
 from imgpush.lib.db import fs, cachefs
+from imgpush.lib.migrate.file_to_mongo import file_to_mongo
+from imgpush.lib.migrate.mongo_to_file import mongo_to_file
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -333,6 +335,10 @@ def delete_image(filename):
 
     return Response(status=204)
 
+if use_mongo:
+    file_to_mongo()
+else:
+    mongo_to_file()
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=settings.PORT, threaded=True, debug=settings.DEBUG)
