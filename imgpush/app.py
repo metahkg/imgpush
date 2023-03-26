@@ -190,7 +190,7 @@ def upload_image():
     output_type = settings.OUTPUT_TYPE or filetype.guess_extension(tmp_filepath)
     error = None
 
-    output_filename = os.path.basename(tmp_filepath) + f".{output_type}"
+    output_filename = os.path.basename(tmp_filepath) + f".{output_type.lower()}"
     output_path = os.path.join(settings.IMAGES_DIR, output_filename)
 
     try:
@@ -200,7 +200,7 @@ def upload_image():
             img = remove_metadata(img)
             if use_mongo:
                 output_file = fs.put(pil_to_binary(img, output_type),
-                                     filename=output_filename, metadata={"type": output_type, "uploadDate": datetime.now()})
+                                     filename=output_filename, metadata={"type": f"image/{output_type}", "uploadDate": datetime.now()})
                 logger.info(f"Uploaded file {output_filename} with ObjectID({str(output_file)}) to GridFS")
             else:
                 format = convert_format_type(output_type)
