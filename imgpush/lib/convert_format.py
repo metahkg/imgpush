@@ -1,19 +1,19 @@
 import imgpush.settings as settings
 from PIL import Image
 
-def convert_format_type(format: str, default_format: str = settings.OUTPUT_TYPE):
-    format = format.upper()
+def convert_format_type(file_format: str, default_format: str = settings.OUTPUT_TYPE):
+    file_format = file_format.upper()
 
     acceptable_formats = ['JPEG', 'JPG', 'PNG', 'BMP', 'GIF', 'JIFF', 'TIFF', 'WEBP']
 
     # Check if the output type is an acceptable format
-    if format not in acceptable_formats:
+    if file_format not in acceptable_formats:
         return default_format
 
-    if format in ('JPG', 'JIFF'):
+    if file_format in ('JPG', 'JIFF'):
         return "JPEG"
 
-    return format
+    return file_format
 
 def convert_image(image: Image.Image, output_format: str):
     output_format = convert_format_type(output_format)
