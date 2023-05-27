@@ -5,9 +5,9 @@ import imgpush.settings as settings
 from io import BytesIO
 from PIL import Image
 
-def pil_to_file(img: Image, format: str, fps: Optional[int] = None) -> BytesIO:
+def pil_to_file(img: Image, file_format: str, fps: Optional[int] = None) -> BytesIO:
     outfile = BytesIO()
-    if format.upper() == "GIF":
+    if file_format.upper() == "GIF":
         frames = []
         try:
             while 1:
@@ -19,13 +19,13 @@ def pil_to_file(img: Image, format: str, fps: Optional[int] = None) -> BytesIO:
         delay = int(1000/fps) if fps else 100
         frames[0].save(outfile, save_all=True, append_images=frames[1:], format="GIF", loop=0, duration=delay)
     else:
-        img.save(outfile, format=convert_format_type(format))
+        img.save(outfile, format=convert_format_type(file_format))
     # Reset the buffer cursor to the beginning of the buffer.
     outfile.seek(0)
     return outfile
 
-def pil_to_binary(img: Image.Image, format: str = "PNG"):
-    if format.upper() == "GIF":
+def pil_to_binary(img: Image.Image, file_format: str = "PNG"):
+    if file_format.upper() == "GIF":
         binary_buffer = BytesIO()
         frames = []
         try:
@@ -44,7 +44,7 @@ def pil_to_binary(img: Image.Image, format: str = "PNG"):
         return binary_data
 
     binary_buffer = BytesIO()
-    img.save(binary_buffer, format=convert_format_type(format))
+    img.save(binary_buffer, format=convert_format_type(file_format))
     binary_data = binary_buffer.getvalue()
     return binary_data
 
