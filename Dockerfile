@@ -1,30 +1,38 @@
-FROM python:3.10-slim
-
-COPY ./pyproject.toml ./poetry.lock ./
-
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    libmagickwand-dev=8:6.9.11.60+dfsg-1.3+deb11u1 && \
-    rm -rf /var/lib/{apt,dpkg,cache,log}/
-
-RUN pip install --no-cache-dir poetry==1.1.13 && \
-    poetry config virtualenvs.create false && \
-    poetry install --no-dev --no-interaction && \
-    rm -rf ~/.cache/pypoetry/{cache,artifacts}
-
-COPY ./ImageMagick-6/policy.xml /etc/ImageMagick-6/policy.xml
-
-RUN mkdir /images /cache /certs
-
-COPY ./app /app
+# Stage 1: Build environment
+FROM python:3.10-alpine as builder
 
 WORKDIR /app
 
-RUN useradd -M python && \
-    chown python:python /images /cache /certs /app
+# Install build dependencies
+RUN apk update && apk add --no-cache build-base libffi-dev
 
+# Copy poetry configuration files
+COPY ./pyproject.toml ./poetry.lock ./
+
+# Install poetry and project dependencies
+RUN pip install --no-cache-dir poetry==1.4.0 && \
+    poetry config virtualenvs.create false && \
+    poetry install --only main --no-interaction && \
+    rm -rf ~/.cache/pypoetry/{cache,artifacts}
+
+# Stage 2: Runtime environment
+FROM python:3.10-alpine
+
+WORKDIR /app
+
+# Copy application code and dependencies from builder stage
+COPY --from=builder /usr/local/lib/python3.10/site-packages/ /usr/local/lib/python3.10/site-packages/
+COPY --from=builder /usr/local/bin/ /usr/local/bin/
+
+COPY ./imgpush ./imgpush
+
+# Create directories and set permissions
+RUN mkdir /images /cache /certs && \
+    adduser -D python && \
+    chown -R python:python /images /cache /certs
+
+# Switch to non-root user
 USER python
 
-ENV FLASK_APP=app.py
-
-CMD ["sh", "-c", "flask run --port ${PORT:-5000} --host 0.0.0.0"]
+# Start application
+CMD FLASK_APP=imgpush/app.py flask run --port ${PORT:-5000} --with-threads --host 0.0.0.0 $(if [ "$DEBUG" = "True" ]; then echo "--debug"; fi;)
