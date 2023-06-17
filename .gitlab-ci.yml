@@ -66,7 +66,26 @@ build:
 
 test:
   stage: test
-  allow_failure: true
+  image: python:3.10-alpine
+  services:
+    - name: mongo
+      alias: db
+      command: ["mongod", "--bind_ip_all"]
+  before_script:
+    - apk add coreutils
+    - pip install poetry
+    - poetry config virtualenvs.create false
+  script:
+    - poetry install
+    - cp example.env .env
+    - mkdir images cache
+    - echo "IMAGES_DIR=$PWD/images/" >> .env
+    - echo "CACHE_DIR=$PWD/cache/" >> .env
+    - echo "MONGO_URI=mongodb://db" >> .env
+    - echo "DEBUG=true" >> .env
+    - nohup python imgpush/app.py &
+    - sleep 5
+    - python imgpush/test.py
   rules:
      - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
      - if: $CI_COMMIT_TAG

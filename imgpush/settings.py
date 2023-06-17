@@ -1,12 +1,14 @@
+import ast
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
 
 PORT = 5000
+DEBUG = False
 IMAGES_DIR = "/images/"
 CACHE_DIR = "/cache/"
-OUTPUT_TYPE = None
+OUTPUT_TYPE = ""
 MAX_UPLOADS_PER_DAY = 1000
 MAX_UPLOADS_PER_HOUR = 100
 MAX_UPLOADS_PER_MINUTE = 20
@@ -24,6 +26,8 @@ DISABLE_URL_UPLOAD = False
 DISABLE_UPLOAD_FORM = False
 UPLOAD_ROUTE = "/"
 IMAGES_ROOT = ""
+MONGO_URI = ""
+USE_MONGO = False
 
 VALID_SIZES = []
 
@@ -34,7 +38,7 @@ for variable in [item for item in globals() if not item.startswith("__")]:
     env_var = os.getenv(variable, NULL).strip()
     if env_var is not NULL:
         try:
-            env_var = eval(env_var)
+            env_var = ast.literal_eval(env_var)
         except Exception:
             pass
     globals()[variable] = env_var if env_var is not NULL else globals()[variable]
